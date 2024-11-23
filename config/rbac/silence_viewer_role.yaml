@@ -1,0 +1,23 @@
+# permissions for end users to view silences.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: silence-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: silence-viewer-role
+rules:
+- apiGroups:
+  - monitoring.coreos.com
+  resources:
+  - silences
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - monitoring.coreos.com
+  resources:
+  - silences/status
+  verbs:
+  - get

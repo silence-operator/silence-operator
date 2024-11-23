@@ -1,0 +1,82 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.16.4
+  name: silences.monitoring.coreos.com
+spec:
+  group: monitoring.coreos.com
+  names:
+    kind: Silence
+    listKind: SilenceList
+    plural: silences
+    singular: silence
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: Silence is the Schema for the silences API.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: SilenceSpec defines the desired state of Silence.
+            properties:
+              comment:
+                type: string
+              matchers:
+                items:
+                  properties:
+                    isEqual:
+                      type: boolean
+                    isRegex:
+                      type: boolean
+                    name:
+                      type: string
+                    value:
+                      type: string
+                  required:
+                  - isRegex
+                  - name
+                  - value
+                  type: object
+                type: array
+              suspend:
+                type: boolean
+            required:
+            - comment
+            - matchers
+            type: object
+          status:
+            description: SilenceStatus defines the observed state of Silence.
+            properties:
+              active:
+                type: boolean
+              alertmanager_id:
+                type: string
+              last_applied_generation:
+                format: int64
+                type: integer
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

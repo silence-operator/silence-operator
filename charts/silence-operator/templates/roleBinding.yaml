@@ -1,0 +1,16 @@
+{{- if .Values.rbac.create -}}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: silence-operator-leader-election-rolebinding
+  namespace: {{ .Release.Namespace }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: silence-operator-leader-election-role
+subjects:
+  - kind: ServiceAccount
+    name: silence-operator
+    namespace: {{ .Release.Namespace }}
+{{- end }}

@@ -1,0 +1,77 @@
+imagePullSecrets: []
+
+image:
+  registry: ghcr.io/silence-operator/silence-operator
+  tag:
+  pullPolicy: IfNotPresent
+
+replicas: 1
+
+rbac:
+  create: true
+
+deploymentStrategy:
+  type: RollingUpdate
+
+revisionHistoryLimit: 10
+
+podLabels: {}
+
+podAnnotations: {}
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 2
+  successThreshold: 1
+
+readinessProbe:
+  httpGet:
+    path: /readyz
+    port: http
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
+  successThreshold: 1
+
+resources: {}
+
+nodeSelector: {}
+
+affinity: {}
+
+topologySpreadConstraints: []
+
+tolerations: []
+
+serviceMonitor:
+  enabled: false
+  additionalLabels: { }
+  annotations: { }
+  namespace:
+  interval:
+  scrapeTimeout:
+  scheme:
+  tlsConfig: { }
+  bearerTokenFile:
+  relabelings: [ ]
+  metricRelabelings: [ ]
+  targetLabels: [ ]
+
+config:
+  alertmanagerHost: "alertmanager"
+  interval: 1m
+  silenceDuration: 1h
+  concurrency: 10
+  namespaced: false
+  silenceAuthor: silence-operator
+  logLevel: info
+  # json, console
+  logFormat: json
+
+extraArgs: []

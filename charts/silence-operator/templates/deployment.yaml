@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: silence-operator
+  name: silence-operator
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: {{ .Values.replicas | int64 }}
+  selector:
+    matchLabels:
+      app: silence-operator
+  strategy:
+    {{- toYaml .Values.deploymentStrategy | nindent 4 }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: manager
+      labels:
+        app: silence-operator
+    spec:
+      containers:
+        - name: manager
+          image: {{ include "silence-operator.image" . }}
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          command:
+            - /manager
+          args:
+            - --metrics-bind-address=:8080
+            - --health-probe-bind-address=:8081
+            - --leader-elect
+            - --instance-name=$(POD_NAME)
+            - --silence-author={{ .Values.config.silenceAuthor }}
+            - --alertmanager-host={{ .Values.config.alertmanagerHost }}
+            - --interval={{ .Values.config.interval }}
+            - --silence-duration={{ .Values.config.silenceDuration }}
+            - --concurrency={{ .Values.config.concurrency }}
+            - --zap-log-level={{ .Values.config.logLevel }}
+            - --zap-encoder={{ .Values.config.logFormat }}
+          {{- range .Values.extraArgs }}
+            - {{ tpl . $ }}
+          {{- end }}
+          ports:
+            - containerPort: 8080
+              name: metrics
+              protocol: TCP
+            - containerPort: 8081
+              name: http
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
+          {{- with .Values.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+      securityContext:
+        runAsNonRoot: true
+      serviceAccountName: silence-operator
+      terminationGracePeriodSeconds: 10
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
