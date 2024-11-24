@@ -9,6 +9,7 @@ Kubernetes operator to manage AlertManager silences via kubernetes resources.
 - [ ] Helm chart
 - [ ] Makefile
 - [ ] Decide if it is okay to use `monitoring.coreos.com/v1alpha1` k8s api
+- [ ] Logo
 
 Some generated files were not commited to the registry:
 - `.devcontainer/`
