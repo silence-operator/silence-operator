@@ -1,0 +1,16 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "alertmanager",
+    srcs = ["client.go"],
+    importpath = "github.com/silence-operator/silence-operator/internal/alertmanager",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//api/v1alpha1",
+        "@com_github_go_openapi_strfmt//:strfmt",
+        "@com_github_prometheus_alertmanager//api/v2/client",
+        "@com_github_prometheus_alertmanager//api/v2/client/silence",
+        "@com_github_prometheus_alertmanager//api/v2/models",
+        "@io_k8s_sigs_controller_runtime//:controller-runtime",
+    ],
+)
