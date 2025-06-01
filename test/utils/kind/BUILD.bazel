@@ -1,0 +1,14 @@
+load("@rules_go//go:def.bzl", "go_library")
+
+go_library(
+    name = "kind_lib",
+    srcs = ["kind.go"],
+    importpath = "github.com/silence-operator/silence-operator/test/utils/kind",
+    visibility = ["//visibility:private"],
+    deps = [
+        "@com_github_google_uuid//:uuid",
+        "@com_github_rs_zerolog//log",
+        "@io_k8s_sigs_kind//cmd/kind/app",
+        "@io_k8s_sigs_kind//pkg/cmd",
+    ],
+)
