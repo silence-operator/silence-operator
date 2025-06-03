@@ -3,11 +3,11 @@ load("@rules_go//go:def.bzl", "go_library", "go_test")
 go_library(
     name = "controller",
     srcs = ["silence_controller.go"],
-    importpath = "github.com/silence-operator/silence-operator/internal/controller",
+    importpath = "github.com/silence-operator/silence-operator/pkg/controller",
     visibility = ["//:__subpackages__"],
     deps = [
         "//api/v1alpha1",
-        "//internal/alertmanager",
+        "//pkg/alertmanager",
         "@com_github_go_openapi_strfmt//:strfmt",
         "@com_github_prometheus_alertmanager//api/v2/models",
         "@io_k8s_apimachinery//pkg/runtime",

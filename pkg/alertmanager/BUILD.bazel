@@ -3,7 +3,7 @@ load("@rules_go//go:def.bzl", "go_library")
 go_library(
     name = "alertmanager",
     srcs = ["client.go"],
-    importpath = "github.com/silence-operator/silence-operator/internal/alertmanager",
+    importpath = "github.com/silence-operator/silence-operator/pkg/alertmanager",
     visibility = ["//:__subpackages__"],
     deps = [
         "//api/v1alpha1",

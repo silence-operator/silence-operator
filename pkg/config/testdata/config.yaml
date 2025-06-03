@@ -1,0 +1,8 @@
+metricsAddress: 0
+healthProbeAddress: :8081
+leaderElection: false
+instanceName: silence-operator
+silenceAuthor: silence-operator
+interval: 600
+duration: 3600
+concurrency: 5

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package main
+package operator
 
 import (
 	"crypto/tls"
@@ -39,9 +39,13 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
+	"github.com/go-logr/logr"
+	"github.com/go-logr/zerologr"
+	"github.com/rs/zerolog"
+
 	monitoringv1alpha1 "github.com/silence-operator/silence-operator/api/v1alpha1"
-	"github.com/silence-operator/silence-operator/internal/alertmanager"
-	"github.com/silence-operator/silence-operator/internal/controller"
+	"github.com/silence-operator/silence-operator/pkg/alertmanager"
+	"github.com/silence-operator/silence-operator/pkg/controller"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -65,14 +69,15 @@ func init() {
 	// +kubebuilder:scaffold:scheme
 }
 
-func main() {
+func Main() {
+
 	var err error
 
-	var metricsAddr string
-	var enableLeaderElection bool
-	var probeAddr string
-	var secureMetrics bool
-	var enableHTTP2 bool
+	var metricsAddr string = "aaaa"
+	var enableLeaderElection bool = false
+	var probeAddr string = "aaaa"
+	var secureMetrics bool = false
+	var enableHTTP2 bool = false
 	var tlsOpts []func(*tls.Config)
 	var instanceName string
 	var silenceAuthor string
@@ -105,8 +110,9 @@ func main() {
 
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
-
-	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
+	zl := zerolog.New(os.Stdout)
+	var log logr.Logger = zerologr.New(&zl)
+	ctrl.SetLogger(log)
 
 	// if the enable-http2 flag is false (the default), http/2 should be disabled
 	// due to its vulnerabilities. More specifically, disabling http/2 will

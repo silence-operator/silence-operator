@@ -28,7 +28,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	monitoringv1alpha1 "github.com/silence-operator/silence-operator/api/v1alpha1"
-	"github.com/silence-operator/silence-operator/internal/alertmanager"
+	"github.com/silence-operator/silence-operator/pkg/alertmanager"
 )
 
 // SilenceReconciler reconciles a Silence object
