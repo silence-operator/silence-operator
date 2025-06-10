@@ -20,6 +20,6 @@ func main() {
 
 	log.Info().Any("configuration", conf).Msg("Loaded configuration")
 
-	operator.Main()
+	operator.Run(conf)
 
 }

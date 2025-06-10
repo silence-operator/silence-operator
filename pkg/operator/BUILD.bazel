@@ -8,6 +8,7 @@ go_library(
     deps = [
         "//api/v1alpha1",
         "//pkg/alertmanager",
+        "//pkg/config",
         "//pkg/controller",
         "@com_github_go_logr_logr//:logr",
         "@com_github_go_logr_zerologr//:zerologr",

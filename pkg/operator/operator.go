@@ -46,6 +46,7 @@ import (
 	monitoringv1alpha1 "github.com/silence-operator/silence-operator/api/v1alpha1"
 	"github.com/silence-operator/silence-operator/pkg/alertmanager"
 	"github.com/silence-operator/silence-operator/pkg/controller"
+	operatorconfig "github.com/silence-operator/silence-operator/pkg/config"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -69,15 +70,15 @@ func init() {
 	// +kubebuilder:scaffold:scheme
 }
 
-func Main() {
+func Run(conf *operatorconfig.Config) {
 
 	var err error
 
-	var metricsAddr string = "aaaa"
-	var enableLeaderElection bool = false
-	var probeAddr string = "aaaa"
-	var secureMetrics bool = false
-	var enableHTTP2 bool = false
+	var metricsAddr string
+	var enableLeaderElection bool
+	var probeAddr string
+	var secureMetrics bool
+	var enableHTTP2 bool
 	var tlsOpts []func(*tls.Config)
 	var instanceName string
 	var silenceAuthor string
@@ -104,11 +105,13 @@ func Main() {
 	flag.DurationVar(&silenceDuration, "silence-duration", defaultDuration, "The duration for the silence.")
 	flag.IntVar(&concurrency, "concurrency", defaultConcurrency, "Amount of silences to be processed in parallel.")
 
+
 	opts := zap.Options{
 		Development: false,
 	}
 
 	opts.BindFlags(flag.CommandLine)
+
 	flag.Parse()
 	zl := zerolog.New(os.Stdout)
 	var log logr.Logger = zerologr.New(&zl)
