@@ -2,5 +2,5 @@
 
 ## TODO
 
-- [ ] Add service monitor
+- [x] Add service monitor
 - [ ] Publish to gh pages or ghcr (oci)
