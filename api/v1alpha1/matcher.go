@@ -33,15 +33,17 @@ func (m Matchers) String() []string {
 	out := make([]string, 0, len(m))
 
 	for _, matcher := range m {
-		operator := ""
-		if !matcher.IsEqual {
-			operator = "!"
-		}
+		var operator string
 
-		if matcher.IsRegex {
-			operator += "~"
-		} else {
-			operator += "="
+		switch {
+		case matcher.IsEqual && matcher.IsRegex:
+			operator = "=~"
+		case !matcher.IsEqual && matcher.IsRegex:
+			operator = "!~"
+		case matcher.IsEqual && !matcher.IsRegex:
+			operator = "="
+		case !matcher.IsEqual && !matcher.IsRegex:
+			operator = "!="
 		}
 
 		filter := fmt.Sprintf("%s%s%s", matcher.Name, operator, matcher.Value)
