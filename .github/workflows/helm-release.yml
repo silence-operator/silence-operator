@@ -2,7 +2,7 @@ name: Release Charts
 
 on:
   workflow_run:
-    workflows: [ 'Goreleaser' ]
+    workflows: [ "Goreleaser" ]
     types:
       - completed
 
@@ -11,6 +11,10 @@ jobs:
     permissions:
       contents: write
     runs-on: ubuntu-latest
+
+    env:
+      CHART_DIR: charts/silence-operator
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,6 +25,10 @@ jobs:
         run: |
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+
+      - name: Update Helm chart version
+        run: |
+          yq eval ".version = \"${{ github.ref_name }}\" | .appVersion = \"${{ github.ref_name }}\"" -i $CHART_DIR/Chart.yaml
 
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@v1.7.0
