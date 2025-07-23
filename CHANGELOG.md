@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.0.0](https://github.com/silence-operator/silence-operator/compare/v1.1.6...v2.0.0) (2025-07-23)
+
+
+### ⚠ BREAKING CHANGES
+
+* Provide alertmanager URL instead of host
+
+### Features
+
+* Provide alertmanager URL instead of host ([20faf8f](https://github.com/silence-operator/silence-operator/commit/20faf8f98be763395e77864d1e940c6212a6aeda))
+
+
+### Bug Fixes
+
+* **controller:** Do not use deprecated requeue option ([6ebda0d](https://github.com/silence-operator/silence-operator/commit/6ebda0dcd6cfefbed90d15567de270b41cb8d827))
+
 ## [1.1.6](https://github.com/silence-operator/silence-operator/compare/v1.1.5...v1.1.6) (2025-07-23)
 
 
