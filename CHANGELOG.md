@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/silence-operator/silence-operator/compare/v1.0.0...v1.0.1) (2025-07-23)
+
+
+### Bug Fixes
+
+* **ci:** Update goreleaser workflow ([dd518d1](https://github.com/silence-operator/silence-operator/commit/dd518d119c79a7f925f67c82dd089616037edfd7))
+
 ## 1.0.0 (2025-07-23)
 
 
