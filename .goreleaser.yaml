@@ -31,15 +31,3 @@ kos:
       - darwin/arm64
       - darwin/amd64
     user: "65532:65532"
-
-changelog:
-  sort: asc
-  filters:
-    exclude:
-      - Merge pull request
-      - Merge branch
-
-release:
-  github:
-    owner: silence-operator
-    name: silence-operator
