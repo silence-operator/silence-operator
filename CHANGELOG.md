@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.2](https://github.com/silence-operator/silence-operator/compare/v1.0.1...v1.0.2) (2025-07-23)
+
+
+### Bug Fixes
+
+* **ci:** Use default baseimage for ko ([4b489c7](https://github.com/silence-operator/silence-operator/commit/4b489c7916f13920d497c299e0e724a6168968d0))
+* **ci:** User personal token ([db23255](https://github.com/silence-operator/silence-operator/commit/db232555aa2a1bdaae3fce31d18770a690080f37))
+
 ## [1.0.1](https://github.com/silence-operator/silence-operator/compare/v1.0.0...v1.0.1) (2025-07-23)
 
 
