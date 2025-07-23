@@ -6,7 +6,7 @@ version: 2
 project_name: silence-operator
 
 builds:
-  - env: [ "CGO_ENABLED=1" ]
+  - env: [ "CGO_ENABLED=0" ]
     main: ./cmd
     binary: silence-operator
     goos:
