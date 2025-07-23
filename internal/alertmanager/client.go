@@ -19,6 +19,7 @@ package alertmanager
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"time"
 
 	"github.com/go-openapi/strfmt"
@@ -38,7 +39,6 @@ type AlertManagerInterface interface {
 }
 
 type AlertManager struct {
-	Host            string
 	Author          string
 	InstanceName    string
 	SilenceDuration time.Duration
@@ -146,15 +146,32 @@ func (c *AlertManager) DeleteSilence(id string) error {
 	return err
 }
 
-func New(host string, author string, instanceName string, silenceDuration time.Duration) *AlertManager {
-	transportConfig := client.DefaultTransportConfig().WithHost(host)
+type Config struct {
+	URL             string
+	Author          string
+	InstanceName    string
+	SilenceDuration time.Duration
+}
+
+func New(cfg *Config) (*AlertManager, error) {
+	amURL, err := url.Parse(cfg.URL)
+	if err != nil {
+		return nil, err
+	}
+
+	if amURL.Scheme == "" {
+		amURL.Scheme = "http"
+	}
+
+	transportConfig := client.DefaultTransportConfig().
+		WithHost(amURL.Host).
+		WithSchemes([]string{amURL.Scheme})
 
 	return &AlertManager{
-		Host:            host,
-		Author:          author,
-		InstanceName:    instanceName,
-		SilenceDuration: silenceDuration,
+		Author:          cfg.Author,
+		InstanceName:    cfg.InstanceName,
+		SilenceDuration: cfg.SilenceDuration,
 
 		am: client.NewHTTPClientWithConfig(strfmt.Default, transportConfig),
-	}
+	}, nil
 }

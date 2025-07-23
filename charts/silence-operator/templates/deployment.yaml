@@ -44,7 +44,7 @@ spec:
             - --leader-elect
             - --instance-name=$(POD_NAME)
             - --silence-author={{ .Values.config.silenceAuthor }}
-            - --alertmanager-host={{ .Values.config.alertmanagerHost }}
+            - --alertmanager-url={{ .Values.config.alertManagerURL }}
             - --interval={{ .Values.config.interval }}
             - --silence-duration={{ .Values.config.silenceDuration }}
             - --concurrency={{ .Values.config.concurrency }}

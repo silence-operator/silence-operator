@@ -77,7 +77,7 @@ serviceMonitor:
   metricRelabelings: [ ]
 
 config:
-  alertmanagerHost: "alertmanager"
+  alertManagerURL: "alertmanager:9093"
   interval: 1m
   silenceDuration: 1h
   concurrency: 10

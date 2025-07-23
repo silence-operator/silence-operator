@@ -79,7 +79,7 @@ func main() {
 	var tlsOpts []func(*tls.Config)
 	var instanceName string
 	var silenceAuthor string
-	var alertManagerHost string
+	var alertManagerURL string
 	var interval time.Duration
 	var silenceDuration time.Duration
 	var concurrency int
@@ -104,7 +104,7 @@ func main() {
 	flag.StringVar(&instanceName, "instance-name", defaultInstanceName, "Name of the silence operator instance.")
 	flag.StringVar(&silenceAuthor, "silence-author", defaultSilenceAuthor,
 		"This string will be used as 'Created by' field in AM silence.")
-	flag.StringVar(&alertManagerHost, "alertmanager-host", "", "AlertManager address.")
+	flag.StringVar(&alertManagerURL, "alertmanager-url", "", "AlertManager URL.")
 	flag.DurationVar(&interval, "interval", defaultInterval, "The interval between reconciliations.")
 	flag.DurationVar(&silenceDuration, "silence-duration", defaultDuration, "The duration for the silence.")
 	flag.IntVar(&concurrency, "concurrency", defaultConcurrency, "Amount of silences to be processed in parallel.")
@@ -163,12 +163,21 @@ func main() {
 	})
 
 	// Initialise alertmanager client
-	if alertManagerHost == "" {
-		setupLog.Error(errors.New("alertmanager Host is empty"), "Failed to start controller.")
+	if alertManagerURL == "" {
+		setupLog.Error(errors.New("alertmanager url is empty"), "Failed to start controller.")
 		os.Exit(1)
 	}
 
-	alertManagerClient := alertmanager.New(alertManagerHost, silenceAuthor, instanceName, silenceDuration)
+	alertManagerClient, err := alertmanager.New(&alertmanager.Config{
+		URL:             alertManagerURL,
+		Author:          silenceAuthor,
+		InstanceName:    instanceName,
+		SilenceDuration: silenceDuration,
+	})
+	if err != nil {
+		setupLog.Error(errors.New("invalid alertmanager configuration"), "Failed to start controller.", "error", err)
+		os.Exit(1)
+	}
 
 	// Metrics endpoint is enabled in 'config/default/kustomization.yaml'. The Metrics options configure the server.
 	// More info:
