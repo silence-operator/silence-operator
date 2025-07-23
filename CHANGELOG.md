@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.5](https://github.com/silence-operator/silence-operator/compare/v1.1.4...v1.1.5) (2025-07-23)
+
+
+### Bug Fixes
+
+* **helm:** Remove manager command from deployment ([fa6c871](https://github.com/silence-operator/silence-operator/commit/fa6c8713424b94588fb49d351b4f6be9186c0225))
+
 ## [1.1.4](https://github.com/silence-operator/silence-operator/compare/v1.1.3...v1.1.4) (2025-07-23)
 
 
