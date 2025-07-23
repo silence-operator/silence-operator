@@ -6,7 +6,6 @@
 *.dylib
 bin/*
 Dockerfile.cross
-dist/*
 
 # Test binary, built with `go test -c`
 *.test
@@ -26,3 +25,6 @@ go.work
 *.swp
 *.swo
 *~
+
+# Added by goreleaser init:
+dist/
