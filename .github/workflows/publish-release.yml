@@ -28,6 +28,7 @@ jobs:
           go-version: stable
 
       - name: Run GoReleaser
+        id: goreleaser
         uses: goreleaser/goreleaser-action@v6
         with:
           args: release --clean
@@ -41,7 +42,7 @@ jobs:
 
       - name: Update Helm chart version
         run: |
-          yq eval ".version = \"${{ github.ref_name }}\" | .appVersion = \"${{ github.ref_name }}\"" -i $CHART_DIR/Chart.yaml
+          yq eval ".version = \"${{ fromJSON(steps.goreleaser.outputs.metadata).version }}\" | .appVersion = \"${{ fromJSON(steps.goreleaser.outputs.metadata).version }}\"" -i $CHART_DIR/Chart.yaml
 
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@v1.7.0
