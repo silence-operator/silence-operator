@@ -1,15 +1,15 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  labels:
-    app: silence-operator
   name: silence-operator
   namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
 spec:
-  replicas: {{ .Values.replicas | int64 }}
+  replicas: {{ .Values.replicas }}
   selector:
     matchLabels:
-      app: silence-operator
+      {{- include "chart.selectorLabels" . | nindent 6 }}
   strategy:
     {{- toYaml .Values.deploymentStrategy | nindent 4 }}
   revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
@@ -17,8 +17,18 @@ spec:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: manager
+        {{- if .Values.podAnnotations }}
+        {{- range $key, $value := .Values.podAnnotations }}
+        {{ $key }}: {{ $value }}
+        {{- end }}
+        {{- end }}
       labels:
-        app: silence-operator
+        {{- include "chart.labels" . | nindent 8 }}
+        {{- if .Values.podLabels }}
+        {{- range $key, $value := .Values.podLabels }}
+        {{ $key }}: {{ $value }}
+        {{- end }}
+        {{- end }}
     spec:
       containers:
         - name: manager
@@ -71,8 +81,10 @@ spec:
         {{- end }}
       securityContext:
         runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
       serviceAccountName: silence-operator
-      terminationGracePeriodSeconds: 10
+      terminationGracePeriodSeconds: {{ .Values.terminationGracePeriodSeconds }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

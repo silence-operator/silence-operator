@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  labels:
-    app: silence-operator
-  name: silence-operator
+  name: silence-operator-metrics
   namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
 spec:
   ports:
     - name: metrics
@@ -12,4 +12,4 @@ spec:
       protocol: TCP
       targetPort: metrics
   selector:
-    app: silence-operator
+    {{- include "chart.selectorLabels" . | nindent 6 }}
