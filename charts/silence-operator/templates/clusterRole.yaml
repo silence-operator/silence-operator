@@ -1,9 +1,11 @@
-{{- if .Values.rbac.create -}}
+{{- if .Values.rbac.create }}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: silence-operator-manager-role
+  labels:
+    {{- include "chart.labels" . | nindent 4 }}
 rules:
   - apiGroups:
       - monitoring.coreos.com
@@ -31,50 +33,4 @@ rules:
       - get
       - patch
       - update
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: silence-operator-silence-editor-role
-rules:
-  - apiGroups:
-      - monitoring.coreos.com
-    resources:
-      - silences
-    verbs:
-      - create
-      - delete
-      - get
-      - list
-      - patch
-      - update
-      - watch
-  - apiGroups:
-      - monitoring.coreos.com
-    resources:
-      - silences/status
-    verbs:
-      - get
-
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: silence-operator-silence-viewer-role
-rules:
-  - apiGroups:
-      - monitoring.coreos.com
-    resources:
-      - silences
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - monitoring.coreos.com
-    resources:
-      - silences/status
-    verbs:
-      - get
 {{- end }}

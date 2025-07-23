@@ -10,6 +10,18 @@ replicas: 1
 rbac:
   create: true
 
+crd:
+  # This option determines whether the CRDs are included
+  # in the installation process.
+  enable: true
+
+  # Enabling this option adds the "helm.sh/resource-policy": keep
+  # annotation to the CRD, ensuring it remains installed even when
+  # the Helm release is uninstalled.
+  # NOTE: Removing the CRDs will also remove all cert-manager CR(s)
+  # (Certificates, Issuers, ...) due to garbage collection.
+  keep: true
+
 deploymentStrategy:
   type: RollingUpdate
 
@@ -38,6 +50,8 @@ readinessProbe:
   timeoutSeconds: 5
   failureThreshold: 6
   successThreshold: 1
+
+terminationGracePeriodSeconds: 10
 
 resources: { }
 
