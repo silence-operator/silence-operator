@@ -11,7 +11,7 @@ builds:
     binary: silence-operator
     goos:
       - darwin
-      # - linux
+      - linux
     goarch:
       - amd64
       - arm64
@@ -31,3 +31,9 @@ kos:
       - darwin/arm64
       - darwin/amd64
     user: "65532:65532"
+
+changelog:
+  disable: true
+
+release:
+  disable: true
