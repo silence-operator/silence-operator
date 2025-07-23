@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.4](https://github.com/silence-operator/silence-operator/compare/v1.1.3...v1.1.4) (2025-07-23)
+
+
+### Bug Fixes
+
+* **ci:** Use goreleaser version for helm ([82894a2](https://github.com/silence-operator/silence-operator/commit/82894a24b81745e6a31d58d98231310633c22ddd))
+
 ## [1.1.3](https://github.com/silence-operator/silence-operator/compare/v1.1.2...v1.1.3) (2025-07-23)
 
 
