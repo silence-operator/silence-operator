@@ -1,0 +1,39 @@
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# vim: set ts=2 sw=2 tw=0 fo=cnqoj
+
+version: 2
+
+project_name: silence-operator
+
+builds:
+  - env: [ "CGO_ENABLED=1" ]
+    main: ./cmd
+    binary: silence-operator
+    goos:
+      - darwin
+      - linux
+    goarch:
+      - amd64
+      - arm64
+
+kos:
+  - repositories:
+      - ghcr.io/silence-operator/silence-operator
+    bare: true
+    preserve_import_paths: false
+    base_image: gcr.io/distroless/static:nonroot
+    tags:
+      - "{{ .Version }}"
+      - latest
+    platforms:
+      - linux/amd64
+      - linux/arm64
+      - darwin/arm64
+      - darwin/amd64
+    user: "65532:65532"
+
+changelog:
+  disable: true
+
+release:
+  disable: true
