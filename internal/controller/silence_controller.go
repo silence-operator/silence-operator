@@ -100,12 +100,12 @@ func (r *SilenceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 			log.Error(err, "unable to add finalizer to silence")
 
-			return ctrl.Result{Requeue: true}, err
+			return ctrl.Result{RequeueAfter: r.Interval}, err
 		}
 
 		log.Info("successfully added finalizer to silence")
 
-		return ctrl.Result{Requeue: true}, nil
+		return ctrl.Result{RequeueAfter: r.Interval}, nil
 	}
 
 	if obj.Spec.Suspend {
@@ -179,7 +179,7 @@ func (r *SilenceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			log.Error(err2, "unable to delete alertmanager silence")
 		}
 
-		return ctrl.Result{Requeue: true}, err
+		return ctrl.Result{RequeueAfter: r.Interval}, err
 	}
 
 	return ctrl.Result{}, err
