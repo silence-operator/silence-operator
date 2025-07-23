@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.6](https://github.com/silence-operator/silence-operator/compare/v1.1.5...v1.1.6) (2025-07-23)
+
+
+### Bug Fixes
+
+* **operator:** Fix matcher to string conversion ([9b7fdc8](https://github.com/silence-operator/silence-operator/commit/9b7fdc833dbc956a920f617a953f60bdb9a6b6f5))
+
 ## [1.1.5](https://github.com/silence-operator/silence-operator/compare/v1.1.4...v1.1.5) (2025-07-23)
 
 
