@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.4](https://github.com/silence-operator/silence-operator/compare/v1.0.3...v1.0.4) (2025-07-23)
+
+
+### Bug Fixes
+
+* **ci:** Change token for goreleaser ([633c817](https://github.com/silence-operator/silence-operator/commit/633c81705beaa8e16afe5b1aa2a8d6438198f142))
+
 ## [1.0.3](https://github.com/silence-operator/silence-operator/compare/v1.0.2...v1.0.3) (2025-07-23)
 
 
