@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/silence-operator/silence-operator/compare/v1.0.2...v1.0.3) (2025-07-23)
+
+
+### Bug Fixes
+
+* **ci:** Disable CGO ([965a42c](https://github.com/silence-operator/silence-operator/commit/965a42cc2a0bbfefa0f5b50871d0df45164ae9ce))
+
 ## [1.0.2](https://github.com/silence-operator/silence-operator/compare/v1.0.1...v1.0.2) (2025-07-23)
 
 
