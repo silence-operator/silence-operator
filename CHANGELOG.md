@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/silence-operator/silence-operator/compare/v1.1.1...v1.1.2) (2025-07-23)
+
+
+### Bug Fixes
+
+* **ci:** Merge image and helm workflows ([9a6d21f](https://github.com/silence-operator/silence-operator/commit/9a6d21fe52fae228deee06696daef24db0fb06b2))
+
 ## [1.1.1](https://github.com/silence-operator/silence-operator/compare/v1.1.0...v1.1.1) (2025-07-23)
 
 
