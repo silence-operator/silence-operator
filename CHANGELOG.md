@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.3](https://github.com/silence-operator/silence-operator/compare/v1.1.2...v1.1.3) (2025-07-23)
+
+
+### Bug Fixes
+
+* **helm:** Remove "v" prefix for image tag ([47b3ef4](https://github.com/silence-operator/silence-operator/commit/47b3ef470844d349b8d2ebdbef8918e8403a02f9))
+
 ## [1.1.2](https://github.com/silence-operator/silence-operator/compare/v1.1.1...v1.1.2) (2025-07-23)
 
 
