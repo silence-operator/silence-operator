@@ -4,14 +4,14 @@ Kubernetes operator to manage AlertManager silences via kubernetes resources.
 
 ## TODO
 
-- [ ] Tests
 - [x] Publish image to ghcr
 - [x] Helm chart
-- [ ] Publish to gh pages or ghcr (oci)
+- [x] Publish to gh pages
+- [ ] Update README with proper instructions
 - [ ] Makefile
 - [ ] Decide if it is okay to use `monitoring.coreos.com/v1alpha1` k8s api
 - [ ] Logo
-- [ ] Update README with proper instructions
+- [ ] Write tests
 
 Some generated files were not commited to the registry:
 
