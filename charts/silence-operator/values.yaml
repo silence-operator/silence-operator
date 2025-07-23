@@ -1,4 +1,4 @@
-imagePullSecrets: []
+imagePullSecrets: [ ]
 
 image:
   registry: ghcr.io/silence-operator/silence-operator
@@ -15,9 +15,9 @@ deploymentStrategy:
 
 revisionHistoryLimit: 10
 
-podLabels: {}
+podLabels: { }
 
-podAnnotations: {}
+podAnnotations: { }
 
 livenessProbe:
   httpGet:
@@ -39,29 +39,28 @@ readinessProbe:
   failureThreshold: 6
   successThreshold: 1
 
-resources: {}
+resources: { }
 
-nodeSelector: {}
+nodeSelector: { }
 
-affinity: {}
+affinity: { }
 
-topologySpreadConstraints: []
+topologySpreadConstraints: [ ]
 
-tolerations: []
+tolerations: [ ]
 
 serviceMonitor:
   enabled: false
+  port: metrics
   additionalLabels: { }
   annotations: { }
-  namespace:
   interval:
+  path:
   scrapeTimeout:
   scheme:
   tlsConfig: { }
-  bearerTokenFile:
   relabelings: [ ]
   metricRelabelings: [ ]
-  targetLabels: [ ]
 
 config:
   alertmanagerHost: "alertmanager"
@@ -74,4 +73,4 @@ config:
   # json, console
   logFormat: json
 
-extraArgs: []
+extraArgs: [ ]

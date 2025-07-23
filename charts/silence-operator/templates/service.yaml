@@ -2,8 +2,8 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app.kubernetes.io/name: silence-operator
-  name: silence-operator-metrics
+    app: silence-operator
+  name: silence-operator
   namespace: {{ .Release.Namespace }}
 spec:
   ports:
