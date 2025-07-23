@@ -11,6 +11,7 @@ Kubernetes operator to manage AlertManager silences via kubernetes resources.
 - [ ] Makefile
 - [ ] Decide if it is okay to use `monitoring.coreos.com/v1alpha1` k8s api
 - [ ] Logo
+- [ ] Update README with proper instructions
 
 Some generated files were not commited to the registry:
 
