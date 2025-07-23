@@ -21,7 +21,6 @@ kos:
       - ghcr.io/silence-operator/silence-operator
     bare: true
     preserve_import_paths: false
-    base_image: gcr.io/distroless/static:nonroot
     tags:
       - "{{ .Version }}"
       - latest
