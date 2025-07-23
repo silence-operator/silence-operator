@@ -1,5 +1,5 @@
 /*
-Copyright 2024.
+Copyright 2025.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -131,7 +131,7 @@ func (r *SilenceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			if *s.Status.State == models.SilenceStatusStateExpired {
 				log.Info("silence expired, updating expireAt")
 			} else {
-				if obj.ObjectMeta.Generation != obj.Status.LastAppliedGeneration {
+				if obj.Generation != obj.Status.LastAppliedGeneration {
 					log.Info("updating alertmanager silence")
 				} else {
 					// Extend silence if three or less reconciliations left
@@ -164,7 +164,7 @@ func (r *SilenceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	log.Info("updating status of the silence object")
 
 	obj.Status.AlertManagerID = id
-	obj.Status.LastAppliedGeneration = obj.ObjectMeta.Generation
+	obj.Status.LastAppliedGeneration = obj.Generation
 
 	err = r.Status().Update(ctx, obj)
 	if err != nil {
