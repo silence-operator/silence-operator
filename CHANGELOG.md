@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/silence-operator/silence-operator/compare/v1.1.0...v1.1.1) (2025-07-23)
+
+
+### Bug Fixes
+
+* **ci:** Update chart version during chart release ([494aab3](https://github.com/silence-operator/silence-operator/commit/494aab39cac2e78f018a40f45d3be17eec136fc5))
+
 ## [1.1.0](https://github.com/silence-operator/silence-operator/compare/v1.0.4...v1.1.0) (2025-07-23)
 
 
