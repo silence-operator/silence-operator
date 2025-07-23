@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.0](https://github.com/silence-operator/silence-operator/compare/v1.0.4...v1.1.0) (2025-07-23)
+
+
+### Features
+
+* **ci:** Add releases for helm ([012f33f](https://github.com/silence-operator/silence-operator/commit/012f33f6df2894976023ae791d554092184acd67))
+* **ci:** Add releases for helm ([b127eed](https://github.com/silence-operator/silence-operator/commit/b127eed903d5cb28fbeaacd6ea4d043687bb87d1))
+
 ## [1.0.4](https://github.com/silence-operator/silence-operator/compare/v1.0.3...v1.0.4) (2025-07-23)
 
 
