@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.1](https://github.com/silence-operator/silence-operator/compare/v2.0.0...v2.0.1) (2025-07-24)
+
+
+### Bug Fixes
+
+* **helm:** Add protocol to default url for alertmanager ([add4389](https://github.com/silence-operator/silence-operator/commit/add43891a568b20ad96f85f48281123602b4bae7))
+
 ## [2.0.0](https://github.com/silence-operator/silence-operator/compare/v1.1.6...v2.0.0) (2025-07-23)
 
 
