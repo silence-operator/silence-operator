@@ -30,6 +30,7 @@ type SilenceSpec struct {
 	Comment  string   `json:"comment"`
 	Matchers Matchers `json:"matchers"`
 
+	// +kubebuilder:default:=false
 	Suspend bool `json:"suspend,omitempty"`
 }
 
