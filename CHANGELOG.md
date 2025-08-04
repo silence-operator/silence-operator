@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.0](https://github.com/silence-operator/silence-operator/compare/v2.0.1...v2.1.0) (2025-08-04)
+
+
+### Features
+
+* **crd:** Add defaults for bool values ([180f284](https://github.com/silence-operator/silence-operator/commit/180f284a3d7b6c0959268bd8cf651df839479a59))
+* **crd:** Add defaults for bool values ([8f6a5f7](https://github.com/silence-operator/silence-operator/commit/8f6a5f78519b357a45adbe428729da857933d70e))
+
 ## [2.0.1](https://github.com/silence-operator/silence-operator/compare/v2.0.0...v2.0.1) (2025-07-24)
 
 
