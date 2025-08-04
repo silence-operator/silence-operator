@@ -51,20 +51,22 @@ spec:
                   items:
                     properties:
                       isEqual:
+                        default: true
                         type: boolean
                       isRegex:
+                        default: true
                         type: boolean
                       name:
                         type: string
                       value:
                         type: string
                     required:
-                      - isRegex
                       - name
                       - value
                     type: object
                   type: array
                 suspend:
+                  default: false
                   type: boolean
               required:
                 - comment
@@ -85,5 +87,5 @@ spec:
       served: true
       storage: true
       subresources:
-        status: {}
+        status: { }
 {{- end -}}
