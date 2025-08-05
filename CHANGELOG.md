@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.1](https://github.com/silence-operator/silence-operator/compare/v2.1.0...v2.1.1) (2025-08-05)
+
+
+### Bug Fixes
+
+* **logs:** Add am_id into log messages ([28c6aa6](https://github.com/silence-operator/silence-operator/commit/28c6aa6b09bd10349d897542ec029b9b223c0716))
+* **reconsiler:** Reconsile after interval ([cb3d203](https://github.com/silence-operator/silence-operator/commit/cb3d20353af265bf8ad9dcddc00a3ab2ec82234d))
+
 ## [2.1.0](https://github.com/silence-operator/silence-operator/compare/v2.0.1...v2.1.0) (2025-08-04)
 
 
