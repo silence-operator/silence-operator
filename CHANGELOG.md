@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.3](https://github.com/silence-operator/silence-operator/compare/v2.1.2...v2.1.3) (2025-08-05)
+
+
+### Bug Fixes
+
+* **lint:** Lint ([268a319](https://github.com/silence-operator/silence-operator/commit/268a319dcbd12744681d5cac623a9cf5014b36b7))
+* **reconcile:** Move get silence options into global configuration ([e06deb4](https://github.com/silence-operator/silence-operator/commit/e06deb4a885ca0877944403b4ea470c9ca4a05b3))
+
 ## [2.1.2](https://github.com/silence-operator/silence-operator/compare/v2.1.1...v2.1.2) (2025-08-05)
 
 
