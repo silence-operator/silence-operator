@@ -110,10 +110,14 @@ func main() {
 		"This string will be used as 'Created by' field in AM silence.")
 	flag.StringVar(&alertManagerURL, "alertmanager-url", "", "AlertManager URL.")
 	flag.DurationVar(&interval, "interval", defaultInterval, "The interval between reconciliations.")
-	flag.DurationVar(&silenceDuration, "silence-duration", defaultDuration, "The duration for the silence.")
-	flag.IntVar(&getSilenceAttempts, "get-silence-attempts", defaultGetSilenceAttempts, "Number of attempts to get the silence.")
-	flag.DurationVar(&getSilenceInterval, "get-silence-interval", defaultGetSilenceInterval, "The interval between get silence attempts.")
-	flag.IntVar(&concurrency, "concurrency", defaultConcurrency, "Amount of silences to be processed in parallel.")
+	flag.DurationVar(&silenceDuration, "silence-duration", defaultDuration,
+		"The duration for the silence.")
+	flag.IntVar(&getSilenceAttempts, "get-silence-attempts", defaultGetSilenceAttempts,
+		"Number of attempts to get the silence.")
+	flag.DurationVar(&getSilenceInterval, "get-silence-interval", defaultGetSilenceInterval,
+		"The interval between get silence attempts.")
+	flag.IntVar(&concurrency, "concurrency", defaultConcurrency,
+		"Amount of silences to be processed in parallel.")
 
 	opts := zap.Options{
 		Development: false,
