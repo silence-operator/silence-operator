@@ -182,7 +182,7 @@ func (r *SilenceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{RequeueAfter: r.Interval}, err
 	}
 
-	return ctrl.Result{}, err
+	return ctrl.Result{RequeueAfter: r.Interval}, err
 }
 
 // SetupWithManager sets up the controller with the Manager.
