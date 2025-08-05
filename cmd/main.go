@@ -53,11 +53,13 @@ var (
 )
 
 const (
-	defaultInterval      = time.Minute * 5
-	defaultDuration      = time.Hour
-	defaultInstanceName  = "silence-operator"
-	defaultSilenceAuthor = "silence-operator"
-	defaultConcurrency   = 10
+	defaultInterval           = time.Minute * 5
+	defaultDuration           = time.Hour
+	defaultInstanceName       = "silence-operator"
+	defaultSilenceAuthor      = "silence-operator"
+	defaultConcurrency        = 10
+	defaultGetSilenceAttempts = 3
+	defaultGetSilenceInterval = time.Second * 10
 )
 
 func init() {
@@ -82,6 +84,8 @@ func main() {
 	var alertManagerURL string
 	var interval time.Duration
 	var silenceDuration time.Duration
+	var getSilenceAttempts int
+	var getSilenceInterval time.Duration
 	var concurrency int
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
@@ -107,6 +111,8 @@ func main() {
 	flag.StringVar(&alertManagerURL, "alertmanager-url", "", "AlertManager URL.")
 	flag.DurationVar(&interval, "interval", defaultInterval, "The interval between reconciliations.")
 	flag.DurationVar(&silenceDuration, "silence-duration", defaultDuration, "The duration for the silence.")
+	flag.IntVar(&getSilenceAttempts, "get-silence-attempts", defaultGetSilenceAttempts, "Number of attempts to get the silence.")
+	flag.DurationVar(&getSilenceInterval, "get-silence-interval", defaultGetSilenceInterval, "The interval between get silence attempts.")
 	flag.IntVar(&concurrency, "concurrency", defaultConcurrency, "Amount of silences to be processed in parallel.")
 
 	opts := zap.Options{
@@ -253,10 +259,12 @@ func main() {
 	}
 
 	if err = (&controller.SilenceReconciler{
-		Client:       mgr.GetClient(),
-		Scheme:       mgr.GetScheme(),
-		AlertManager: alertManagerClient,
-		Interval:     interval,
+		Client:             mgr.GetClient(),
+		Scheme:             mgr.GetScheme(),
+		AlertManager:       alertManagerClient,
+		Interval:           interval,
+		GetSilenceAttempts: getSilenceAttempts,
+		GetSilenceInterval: getSilenceInterval,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Silence")
 		os.Exit(1)

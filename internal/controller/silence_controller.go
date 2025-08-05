@@ -32,11 +32,6 @@ import (
 	"github.com/silence-operator/silence-operator/internal/alertmanager"
 )
 
-const (
-	getSilenceAttempts = 3
-	getSilenceInterval = time.Second * 15
-)
-
 // SilenceReconciler reconciles a Silence object
 type SilenceReconciler struct {
 	client.Client
@@ -44,6 +39,9 @@ type SilenceReconciler struct {
 
 	AlertManager *alertmanager.AlertManager
 	Interval     time.Duration
+
+	GetSilenceAttempts int
+	GetSilenceInterval time.Duration
 }
 
 // +kubebuilder:rbac:groups=monitoring.coreos.com,resources=silences,verbs=get;list;watch;create;update;patch;delete
@@ -133,7 +131,7 @@ func (r *SilenceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		var err error
 
 		for {
-			if attempt > getSilenceAttempts {
+			if attempt > r.GetSilenceAttempts {
 				log.Info("unable to get alertmanager silence", "am_id", obj.Status.AlertManagerID, "err", err.Error())
 				obj.Status.AlertManagerID = ""
 
@@ -145,7 +143,7 @@ func (r *SilenceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			response, err = r.AlertManager.GetSilence(obj.Status.AlertManagerID)
 			if err != nil {
 				attempt++
-				time.Sleep(getSilenceInterval)
+				time.Sleep(r.GetSilenceInterval)
 
 				continue
 			}
