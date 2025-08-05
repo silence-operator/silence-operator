@@ -70,12 +70,12 @@ func (r *SilenceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// Handle object deletion
 	if !obj.DeletionTimestamp.IsZero() {
 		if obj.Status.AlertManagerID != "" {
-			log.Info("deleting alertmanager silence")
+			log.Info("deleting alertmanager silence", "am_id", obj.Status.AlertManagerID)
 
 			err := r.AlertManager.DeleteSilence(obj.Status.AlertManagerID)
 			if err != nil {
 				reconciliationCompleted = false
-				log.Error(err, "unable to delete silence in alertmanager")
+				log.Error(err, "unable to delete silence in alertmanager", "am_id", obj.Status.AlertManagerID)
 			}
 		}
 
@@ -121,7 +121,7 @@ func (r *SilenceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	} else {
 		response, err := r.AlertManager.GetSilence(obj.Status.AlertManagerID)
 		if err != nil {
-			log.Info("unable to get alertmanager silence")
+			log.Info("unable to get alertmanager silence", "am_id", obj.Status.AlertManagerID, "err", err.Error())
 
 			obj.Status.AlertManagerID = ""
 		} else {
@@ -129,10 +129,10 @@ func (r *SilenceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			startsAt = s.StartsAt
 
 			if *s.Status.State == models.SilenceStatusStateExpired {
-				log.Info("silence expired, updating expireAt")
+				log.Info("silence expired, updating expireAt", "am_id", obj.Status.AlertManagerID)
 			} else {
 				if obj.Generation != obj.Status.LastAppliedGeneration {
-					log.Info("updating alertmanager silence")
+					log.Info("updating alertmanager silence", "am_id", obj.Status.AlertManagerID)
 				} else {
 					// Extend silence if three or less reconciliations left
 					deadline := time.Now().Add(r.Interval * 3)
@@ -152,7 +152,7 @@ func (r *SilenceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if err != nil {
 		reconciliationCompleted = false
 
-		log.Error(err, "unable to upsert silence")
+		log.Error(err, "unable to upsert silence", "am_id", obj.Status.AlertManagerID)
 
 		return ctrl.Result{RequeueAfter: r.Interval}, err
 	}
