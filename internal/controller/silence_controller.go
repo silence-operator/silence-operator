@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/go-openapi/strfmt"
+	"github.com/prometheus/alertmanager/api/v2/client/silence"
 	"github.com/prometheus/alertmanager/api/v2/models"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -29,6 +30,11 @@ import (
 
 	monitoringv1alpha1 "github.com/silence-operator/silence-operator/api/v1alpha1"
 	"github.com/silence-operator/silence-operator/internal/alertmanager"
+)
+
+const (
+	getSilenceAttempts = 3
+	getSilenceInterval = time.Second * 15
 )
 
 // SilenceReconciler reconciles a Silence object
@@ -119,12 +125,35 @@ func (r *SilenceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if obj.Status.AlertManagerID == "" {
 		log.Info("silence is not created yet, creating")
 	} else {
-		response, err := r.AlertManager.GetSilence(obj.Status.AlertManagerID)
-		if err != nil {
-			log.Info("unable to get alertmanager silence", "am_id", obj.Status.AlertManagerID, "err", err.Error())
+		// In case if there is a cluster of alertmanager instances, silence replication between them might be delayed.
+		// Try to get silences several times with interval
+		attempt := 1
 
-			obj.Status.AlertManagerID = ""
-		} else {
+		var response *silence.GetSilenceOK
+		var err error
+
+		for {
+			if attempt > getSilenceAttempts {
+				log.Info("unable to get alertmanager silence", "am_id", obj.Status.AlertManagerID, "err", err.Error())
+				obj.Status.AlertManagerID = ""
+
+				break
+			}
+
+			log.Info("getting silence", "attempt", attempt, "am_id", obj.Status.AlertManagerID)
+
+			response, err = r.AlertManager.GetSilence(obj.Status.AlertManagerID)
+			if err != nil {
+				attempt++
+				time.Sleep(getSilenceInterval)
+
+				continue
+			}
+
+			break
+		}
+
+		if err == nil {
 			s := response.GetPayload()
 			startsAt = s.StartsAt
 
