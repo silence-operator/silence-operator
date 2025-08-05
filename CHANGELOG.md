@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.2](https://github.com/silence-operator/silence-operator/compare/v2.1.1...v2.1.2) (2025-08-05)
+
+
+### Bug Fixes
+
+* **reconsile:** Make serveral attempt to get silences from alertmanager ([a6202d7](https://github.com/silence-operator/silence-operator/commit/a6202d7a27de11abd83625ab1fdd254e13d89dd1))
+
 ## [2.1.1](https://github.com/silence-operator/silence-operator/compare/v2.1.0...v2.1.1) (2025-08-05)
 
 
