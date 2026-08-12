@@ -1,0 +1,82 @@
+# Copyright 2026 Silence-Operator Maintainers
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("@rules_go//go:def.bzl", "go_library", "go_test")
+load("//bazel:addlicense.bzl", "addlicense", "addlicense_test")
+
+package(default_package_metadata = ["//:package_metadata"])
+
+go_library(
+    name = "controller",
+    srcs = ["silence_controller.go"],
+    importpath = "github.com/silence-operator/silence-operator/internal/controller",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//api/v1alpha1",
+        "//internal/alertmanager",
+        "@com_github_go_openapi_strfmt//:strfmt",
+        "@com_github_prometheus_alertmanager//api/v2/client/silence",
+        "@com_github_prometheus_alertmanager//api/v2/models",
+        "@io_k8s_apimachinery//pkg/runtime",
+        "@io_k8s_sigs_controller_runtime//:controller-runtime",
+        "@io_k8s_sigs_controller_runtime//pkg/client",
+        "@io_k8s_sigs_controller_runtime//pkg/controller/controllerutil",
+    ],
+)
+
+go_test(
+    name = "controller_test",
+    srcs = [
+        "silence_controller_test.go",
+        "suite_test.go",
+    ],
+    embed = [":controller"],
+    # Needs KUBEBUILDER_ASSETS (envtest); excluded from `bazel test //...`, run via `make test`.
+    tags = ["manual"],
+    deps = [
+        "//api/v1alpha1",
+        "@com_github_onsi_ginkgo_v2//:ginkgo",
+        "@com_github_onsi_gomega//:gomega",
+        "@io_k8s_apimachinery//pkg/api/errors",
+        "@io_k8s_apimachinery//pkg/apis/meta/v1:meta",
+        "@io_k8s_apimachinery//pkg/types",
+        "@io_k8s_client_go//kubernetes/scheme",
+        "@io_k8s_client_go//rest",
+        "@io_k8s_sigs_controller_runtime//pkg/client",
+        "@io_k8s_sigs_controller_runtime//pkg/envtest",
+        "@io_k8s_sigs_controller_runtime//pkg/log",
+        "@io_k8s_sigs_controller_runtime//pkg/log/zap",
+        "@io_k8s_sigs_controller_runtime//pkg/reconcile",
+    ],
+)
+
+_LICENSE_SRCS = glob([
+    "*.go",
+    "BUILD.bazel",
+])
+
+addlicense_test(
+    name = "addlicense",
+    size = "small",
+    srcs = _LICENSE_SRCS,
+    copyright = "Silence-Operator Maintainers",
+    license = "apache",
+)
+
+addlicense(
+    name = "addlicense_fix",
+    srcs = _LICENSE_SRCS,
+    copyright = "Silence-Operator Maintainers",
+    license = "apache",
+)

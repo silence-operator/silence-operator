@@ -1,0 +1,43 @@
+load("//bazel:addlicense.bzl", "addlicense", "addlicense_test")
+load("//bazel:gitleaks.bzl", "gitleaks_test")
+load("//bazel:kubeconform.bzl", "kubeconform_test")
+load("//bazel:kustomization.bzl", "kustomization")
+
+package(default_package_metadata = ["//:package_metadata"])
+
+kustomization(
+    name = "install",
+    srcs = glob(["*.yaml"]) + [
+        "//config/crd:files",
+        "//config/manager:files",
+        "//config/rbac:files",
+    ],
+    out = "install.yaml",
+)
+
+kubeconform_test(
+    name = "kubeconform",
+    size = "small",
+    srcs = [":install"],
+)
+
+gitleaks_test(
+    name = "gitleaks",
+    size = "small",
+    src = ":install",
+)
+
+addlicense_test(
+    name = "addlicense",
+    size = "small",
+    srcs = ["BUILD.bazel"],
+    copyright = "Silence-Operator Maintainers",
+    license = "apache",
+)
+
+addlicense(
+    name = "addlicense_fix",
+    srcs = ["BUILD.bazel"],
+    copyright = "Silence-Operator Maintainers",
+    license = "apache",
+)

@@ -1,0 +1,28 @@
+load("//bazel:addlicense.bzl", "addlicense", "addlicense_test")
+
+package(default_package_metadata = ["//:package_metadata"])
+
+exports_files([
+    "addlicense.bzl",
+    "addlicense_toolchain.bzl",
+])
+
+_LICENSE_SRCS = glob([
+    "*.bzl",
+    "BUILD.bazel",
+])
+
+addlicense_test(
+    name = "addlicense",
+    size = "small",
+    srcs = _LICENSE_SRCS,
+    copyright = "Silence-Operator Maintainers",
+    license = "apache",
+)
+
+addlicense(
+    name = "addlicense_fix",
+    srcs = _LICENSE_SRCS,
+    copyright = "Silence-Operator Maintainers",
+    license = "apache",
+)

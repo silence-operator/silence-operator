@@ -1,0 +1,42 @@
+load("@rules_go//go:def.bzl", "go_library")
+load("//bazel:addlicense.bzl", "addlicense", "addlicense_test")
+
+package(default_package_metadata = ["//:package_metadata"])
+
+go_library(
+    name = "v1alpha1",
+    srcs = [
+        "groupversion_info.go",
+        "matcher.go",
+        "silence_types.go",
+        "zz_generated.deepcopy.go",
+    ],
+    importpath = "github.com/silence-operator/silence-operator/api/v1alpha1",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@io_k8s_apimachinery//pkg/apis/meta/v1:meta",
+        "@io_k8s_apimachinery//pkg/runtime",
+        "@io_k8s_apimachinery//pkg/runtime/schema",
+        "@io_k8s_sigs_controller_runtime//pkg/scheme",
+    ],
+)
+
+_LICENSE_SRCS = glob([
+    "*.go",
+    "BUILD.bazel",
+])
+
+addlicense_test(
+    name = "addlicense",
+    size = "small",
+    srcs = _LICENSE_SRCS,
+    copyright = "Silence-Operator Maintainers",
+    license = "apache",
+)
+
+addlicense(
+    name = "addlicense_fix",
+    srcs = _LICENSE_SRCS,
+    copyright = "Silence-Operator Maintainers",
+    license = "apache",
+)

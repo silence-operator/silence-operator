@@ -1,0 +1,39 @@
+load("@rules_go//go:def.bzl", "go_test")
+load("//bazel:addlicense.bzl", "addlicense", "addlicense_test")
+
+package(default_package_metadata = ["//:package_metadata"])
+
+go_test(
+    name = "e2e_test",
+    srcs = [
+        "e2e_suite_test.go",
+        "e2e_test.go",
+    ],
+    # Needs a live kind cluster; excluded from `bazel test //...`, run via `make test-e2e`.
+    tags = ["manual"],
+    deps = [
+        "//test/utils",
+        "@com_github_onsi_ginkgo_v2//:ginkgo",
+        "@com_github_onsi_gomega//:gomega",
+    ],
+)
+
+_LICENSE_SRCS = glob([
+    "*.go",
+    "BUILD.bazel",
+])
+
+addlicense_test(
+    name = "addlicense",
+    size = "small",
+    srcs = _LICENSE_SRCS,
+    copyright = "Silence-Operator Maintainers",
+    license = "apache",
+)
+
+addlicense(
+    name = "addlicense_fix",
+    srcs = _LICENSE_SRCS,
+    copyright = "Silence-Operator Maintainers",
+    license = "apache",
+)

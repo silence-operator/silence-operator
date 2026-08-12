@@ -1,0 +1,50 @@
+load("@gazelle//:def.bzl", "gazelle")
+load("@package_metadata//:defs.bzl", "package_metadata")
+load("@package_metadata//licenses/rules:license.bzl", "license")
+load("@package_metadata//purl:purl.bzl", "purl")
+load("//bazel:addlicense.bzl", "addlicense", "addlicense_test")
+
+package(
+    default_package_metadata = [":package_metadata"],
+    default_visibility = ["//visibility:public"],
+)
+
+gazelle(name = "gazelle")
+
+package_metadata(
+    name = "package_metadata",
+    attributes = [":license"],
+    purl = purl.bazel(
+        module_name(),
+        module_version(),
+    ),
+)
+
+license(
+    name = "license",
+    kind = "@package_metadata//licenses/spdx:Apache-2.0",
+    text = "LICENSE",
+)
+
+_LICENSE_SRCS = glob(
+    [
+        "*.bzl",
+        "BUILD.bazel",
+    ],
+    allow_empty = True,
+)
+
+addlicense_test(
+    name = "addlicense",
+    size = "small",
+    srcs = _LICENSE_SRCS,
+    copyright = "Silence-Operator Maintainers",
+    license = "apache",
+)
+
+addlicense(
+    name = "addlicense_fix",
+    srcs = _LICENSE_SRCS,
+    copyright = "Silence-Operator Maintainers",
+    license = "apache",
+)
