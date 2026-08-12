@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Repository rule for downloading a pinned helm binary.
-
-Adapted from datavant/rules_gitops (toolchains/helm.bzl), Apache-2.0.
-"""
+"""Repository rule for downloading a pinned helm binary."""
 
 _VERSION = "4.2.3"
 

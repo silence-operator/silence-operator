@@ -1,0 +1,8 @@
+{
+  "_base": {
+    "description": "Base config inherited by every analyzer.",
+    "exclude_files": {
+      "zz_generated\\..*\\.go$": "controller-gen output; not hand-written, mirrors .golangci.yml's `generated: lax`"
+    }
+  }
+}

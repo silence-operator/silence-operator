@@ -12,24 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_go//go:def.bzl", "go_test")
+load("@rules_go//go:def.bzl", "go_library")
 load("//bazel:addlicense.bzl", "license_check")
 
 package(default_package_metadata = ["//:package_metadata"])
 
-go_test(
-    name = "e2e_test",
-    srcs = [
-        "e2e_suite_test.go",
-        "e2e_test.go",
-    ],
-    # Needs a live kind cluster; excluded from `bazel test //...`, run via `make test-e2e`.
-    tags = ["manual"],
-    deps = [
-        "//test/utils",
-        "@com_github_onsi_ginkgo_v2//:ginkgo",
-        "@com_github_onsi_gomega//:gomega",
-    ],
+go_library(
+    name = "unused",
+    srcs = ["unused.go"],
+    importpath = "github.com/silence-operator/silence-operator/bazel/nogo/unused",
+    visibility = ["//visibility:public"],
+    deps = ["@co_honnef_go_tools//unused"],
 )
 
 license_check()

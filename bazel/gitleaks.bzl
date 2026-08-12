@@ -12,15 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Rule for scanning source files for secrets using gitleaks.
-
-Adapted from datavant/rules_gitops (rules/gitleaks.bzl), Apache-2.0. Fixed two
-bugs vs. upstream: (1) the tool rlocation path for the external toolchain
-repo (see addlicense.bzl), and (2) the scan invocation itself -- upstream
-passed a bare "dir <path>" positional that gitleaks' detect subcommand
-doesn't accept, so it silently ignored the target and scanned (or, absent a
-git repo, no-opped on) the sandbox cwd instead. Fixed with --no-git --source.
-"""
+"""Rule for scanning source files for secrets using gitleaks."""
 
 BASH_RLOCATION_FUNCTION = r"""\
 # --- begin runfiles.bash initialization v3 ---

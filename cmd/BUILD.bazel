@@ -13,7 +13,7 @@
 # limitations under the License.
 
 load("@rules_go//go:def.bzl", "go_binary", "go_library")
-load("//bazel:addlicense.bzl", "addlicense", "addlicense_test")
+load("//bazel:addlicense.bzl", "license_check")
 
 package(default_package_metadata = ["//:package_metadata"])
 
@@ -48,22 +48,4 @@ go_binary(
     visibility = ["//visibility:public"],
 )
 
-_LICENSE_SRCS = glob([
-    "*.go",
-    "BUILD.bazel",
-])
-
-addlicense_test(
-    name = "addlicense",
-    size = "small",
-    srcs = _LICENSE_SRCS,
-    copyright = "Silence-Operator Maintainers",
-    license = "apache",
-)
-
-addlicense(
-    name = "addlicense_fix",
-    srcs = _LICENSE_SRCS,
-    copyright = "Silence-Operator Maintainers",
-    license = "apache",
-)
+license_check()

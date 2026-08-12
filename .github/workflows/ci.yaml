@@ -1,0 +1,46 @@
+name: Bazel
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  build:
+    name: Build, test and lint (nogo) on Ubuntu
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone the code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Bazelisk
+        uses: bazelbuild/setup-bazelisk@b39c379c82683a5f25d34f0d062761f62693e0b2 # v3
+
+      - name: Cache Bazel repository cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/bazel-repo
+          key: bazel-repo-${{ runner.os }}-${{ hashFiles('MODULE.bazel', 'MODULE.bazel.lock', 'go.mod', 'go.sum') }}
+
+      - name: Cache Bazel disk cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/bazel-disk
+          key: bazel-disk-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            bazel-disk-${{ runner.os }}-
+
+      # Catches drift between go.mod/go.sum and MODULE.bazel/BUILD.bazel files.
+      - name: Check generated Bazel files are up to date
+        run: |
+          bazel mod tidy --config=ci
+          bazel run --config=ci //:gazelle
+          git diff --exit-code
+
+      # Compiling every go_library/go_binary runs nogo (bazel/nogo/README.md) as a validation action.
+      - name: Build
+        run: bazel build --config=ci //...
+
+      - name: Test
+        run: bazel test --config=ci //... --test_tag_filters=-manual

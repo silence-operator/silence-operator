@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Repository rule for downloading a pinned gitleaks binary.
-
-Adapted from datavant/rules_gitops (toolchains/gitleaks.bzl), Apache-2.0.
-"""
+"""Repository rule for downloading a pinned gitleaks binary."""
 
 _VERSION = "8.30.1"
 

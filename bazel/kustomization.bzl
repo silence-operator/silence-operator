@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Rule for building Kubernetes manifests from kustomize overlays.
-
-Adapted from datavant/rules_gitops (rules/kustomization.bzl), Apache-2.0.
-"""
+"""Rule for building Kubernetes manifests from kustomize overlays."""
 
 def _kustomization_impl(ctx):
     # Stage srcs at their workspace-relative paths so overlay->base relative refs (../../base) resolve.

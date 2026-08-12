@@ -12,11 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Rule for validating Kubernetes manifests against JSON schemas using kubeconform.
-
-Adapted from datavant/rules_gitops (rules/kubeconform.bzl), Apache-2.0; fixed
-the tool rlocation path for the external toolchain repo (see addlicense.bzl).
-"""
+"""Rule for validating Kubernetes manifests against JSON schemas using kubeconform."""
 
 BASH_RLOCATION_FUNCTION = r"""\
 # --- begin runfiles.bash initialization v3 ---

@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Repository rule for downloading a pinned kubeconform binary.
-
-Adapted from datavant/rules_gitops (toolchains/kubeconform.bzl), Apache-2.0.
-"""
+"""Repository rule for downloading a pinned kubeconform binary."""
 
 _VERSION = "0.8.0"
 

@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Repository rule for downloading a pinned addlicense binary.
-
-Adapted from datavant/rules_gitops (toolchains/addlicense.bzl), Apache-2.0.
-"""
+"""Repository rule for downloading a pinned addlicense binary."""
 
 _VERSION = "1.2.0"
 

@@ -12,24 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_go//go:def.bzl", "go_test")
+load("@rules_go//go:def.bzl", "TOOLS_NOGO", "nogo")
 load("//bazel:addlicense.bzl", "license_check")
+load(":staticcheck.bzl", "STATICCHECK_SA_ANALYZERS")
 
 package(default_package_metadata = ["//:package_metadata"])
 
-go_test(
-    name = "e2e_test",
-    srcs = [
-        "e2e_suite_test.go",
-        "e2e_test.go",
-    ],
-    # Needs a live kind cluster; excluded from `bazel test //...`, run via `make test-e2e`.
-    tags = ["manual"],
-    deps = [
-        "//test/utils",
-        "@com_github_onsi_ginkgo_v2//:ginkgo",
-        "@com_github_onsi_gomega//:gomega",
+# Build-time subset of .golangci.yml's linters -- see README.md for scope.
+nogo(
+    name = "nogo",
+    config = "config.json",
+    visibility = ["//visibility:public"],
+    deps = TOOLS_NOGO + STATICCHECK_SA_ANALYZERS + [
+        "//bazel/nogo/unused",
+        "@com_github_gordonklaus_ineffassign//pkg/ineffassign",
+        "@com_github_kisielk_errcheck//errcheck",
+        "@com_github_nunnatsa_ginkgolinter//:ginkgolinter",
     ],
 )
 
-license_check()
+license_check(patterns = ["*.bzl"])

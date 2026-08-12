@@ -12,12 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Rules for checking and stamping license headers using addlicense.
-
-Adapted from datavant/rules_gitops (rules/addlicense.bzl), Apache-2.0; the
-addlicense -l/-c flags are now quoted in the generated shell command so a
-multi-word copyright holder isn't split into bogus extra file arguments.
-"""
+"""Rules for checking and stamping license headers using addlicense."""
 
 BASH_RLOCATION_FUNCTION = r"""\
 # --- begin runfiles.bash initialization v3 ---
@@ -131,3 +126,25 @@ addlicense = rule(
     attrs = _ADDLICENSE_ATTRS,
     executable = True,
 )
+
+def license_check(patterns = ["*.go"], allow_empty = False):
+    """Declares :addlicense (test) and :addlicense_fix targets for this package.
+
+    Args:
+      patterns: extra glob patterns to check, besides "BUILD.bazel".
+      allow_empty: passed through to the underlying glob().
+    """
+    srcs = native.glob(patterns + ["BUILD.bazel"], allow_empty = allow_empty)
+    addlicense_test(
+        name = "addlicense",
+        size = "small",
+        srcs = srcs,
+        copyright = "Silence-Operator Maintainers",
+        license = "apache",
+    )
+    addlicense(
+        name = "addlicense_fix",
+        srcs = srcs,
+        copyright = "Silence-Operator Maintainers",
+        license = "apache",
+    )

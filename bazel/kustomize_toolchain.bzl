@@ -12,10 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Repository rule for downloading a pinned kustomize binary.
-
-Adapted from datavant/rules_gitops (toolchains/kustomize.bzl), Apache-2.0.
-"""
+"""Repository rule for downloading a pinned kustomize binary."""
 
 _VERSION = "5.8.1"
 
