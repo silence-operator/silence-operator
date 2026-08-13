@@ -14,7 +14,7 @@
 
 """Repository rule for downloading a pinned helm binary."""
 
-_VERSION = "4.2.3"
+VERSION = "4.2.3"
 
 _HELM_URLS = {
     "linux_amd64": (
@@ -69,9 +69,9 @@ def _helm_repo_impl(rctx):
         sha256 = sha256,
         stripPrefix = os + "-" + arch,
     )
-    rctx.file("BUILD.bazel", 'exports_files(["helm"])\n')
+    rctx.file("BUILD.bazel", 'exports_files(["helm", "LICENSE"])\n')
 
 helm_repo = repository_rule(
     implementation = _helm_repo_impl,
-    doc = "Downloads the pinned v" + _VERSION + " helm release binary for the host platform.",
+    doc = "Downloads the pinned v" + VERSION + " helm release binary for the host platform.",
 )

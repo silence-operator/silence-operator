@@ -14,7 +14,7 @@
 
 """Repository rule for downloading a pinned kustomize binary."""
 
-_VERSION = "5.8.1"
+VERSION = "5.8.1"
 
 _KUSTOMIZE_URLS = {
     "linux_amd64": (
@@ -67,5 +67,5 @@ def _kustomize_repo_impl(rctx):
 
 kustomize_repo = repository_rule(
     implementation = _kustomize_repo_impl,
-    doc = "Downloads the pinned v" + _VERSION + " kustomize release binary for the host platform.",
+    doc = "Downloads the pinned v" + VERSION + " kustomize release binary for the host platform.",
 )

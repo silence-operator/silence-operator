@@ -14,7 +14,7 @@
 
 """Repository rule for downloading a pinned kubeconform binary."""
 
-_VERSION = "0.8.0"
+VERSION = "0.8.0"
 
 _KUBECONFORM_URLS = {
     "linux_amd64": (
@@ -63,9 +63,9 @@ def _kubeconform_repo_impl(rctx):
     url, sha256 = entry
 
     rctx.download_and_extract(url = url, sha256 = sha256)
-    rctx.file("BUILD.bazel", 'exports_files(["kubeconform"])\n')
+    rctx.file("BUILD.bazel", 'exports_files(["kubeconform", "LICENSE"])\n')
 
 kubeconform_repo = repository_rule(
     implementation = _kubeconform_repo_impl,
-    doc = "Downloads the pinned v" + _VERSION + " kubeconform release binary for the host platform.",
+    doc = "Downloads the pinned v" + VERSION + " kubeconform release binary for the host platform.",
 )

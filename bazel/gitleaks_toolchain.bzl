@@ -14,7 +14,7 @@
 
 """Repository rule for downloading a pinned gitleaks binary."""
 
-_VERSION = "8.30.1"
+VERSION = "8.30.1"
 
 _GITLEAKS_URLS = {
     "linux_amd64": (
@@ -63,9 +63,9 @@ def _gitleaks_repo_impl(rctx):
     url, sha256 = entry
 
     rctx.download_and_extract(url = url, sha256 = sha256)
-    rctx.file("BUILD.bazel", 'exports_files(["gitleaks"])\n')
+    rctx.file("BUILD.bazel", 'exports_files(["gitleaks", "LICENSE"])\n')
 
 gitleaks_repo = repository_rule(
     implementation = _gitleaks_repo_impl,
-    doc = "Downloads the pinned v" + _VERSION + " gitleaks release binary for the host platform.",
+    doc = "Downloads the pinned v" + VERSION + " gitleaks release binary for the host platform.",
 )

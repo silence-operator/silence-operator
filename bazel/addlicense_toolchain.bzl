@@ -14,7 +14,7 @@
 
 """Repository rule for downloading a pinned addlicense binary."""
 
-_VERSION = "1.2.0"
+VERSION = "1.2.0"
 
 _ADDLICENSE_URLS = {
     "linux_amd64": (
@@ -63,9 +63,9 @@ def _addlicense_repo_impl(rctx):
     url, sha256 = entry
 
     rctx.download_and_extract(url = url, sha256 = sha256)
-    rctx.file("BUILD.bazel", 'exports_files(["addlicense"])\n')
+    rctx.file("BUILD.bazel", 'exports_files(["addlicense", "LICENSE"])\n')
 
 addlicense_repo = repository_rule(
     implementation = _addlicense_repo_impl,
-    doc = "Downloads the pinned v" + _VERSION + " addlicense release binary for the host platform.",
+    doc = "Downloads the pinned v" + VERSION + " addlicense release binary for the host platform.",
 )

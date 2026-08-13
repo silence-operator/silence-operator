@@ -31,11 +31,12 @@ jobs:
           restore-keys: |
             bazel-disk-${{ runner.os }}-
 
-      # Catches drift between go.mod/go.sum and MODULE.bazel/BUILD.bazel files.
+      # Catches drift between go.mod/go.sum, MODULE.bazel/BUILD.bazel files, and NOTICE.
       - name: Check generated Bazel files are up to date
         run: |
           bazel mod tidy --config=ci
           bazel run --config=ci //:gazelle
+          bazel run --config=ci //:notice
           git diff --exit-code
 
       # Compiling every go_library/go_binary runs nogo (bazel/nogo/README.md) as a validation action.
