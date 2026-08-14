@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_go//go:def.bzl", "go_library")
+load("@rules_go//go:def.bzl", "go_library", "go_test")
 load("//bazel:addlicense.bzl", "license_check")
 
 package(default_package_metadata = ["//:package_metadata"])
@@ -35,3 +35,9 @@ go_library(
 )
 
 license_check()
+
+go_test(
+    name = "v1alpha1_test",
+    srcs = ["matcher_test.go"],
+    embed = [":v1alpha1"],
+)
