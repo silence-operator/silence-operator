@@ -28,3 +28,6 @@ go.work
 
 # Added by goreleaser init:
 dist/
+
+# bazel
+bazel-*

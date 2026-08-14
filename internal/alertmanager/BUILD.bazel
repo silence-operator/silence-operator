@@ -1,0 +1,35 @@
+# Copyright 2026 Silence-Operator Maintainers
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+load("@rules_go//go:def.bzl", "go_library")
+load("//bazel:addlicense.bzl", "license_check")
+
+package(default_package_metadata = ["//:package_metadata"])
+
+go_library(
+    name = "alertmanager",
+    srcs = ["client.go"],
+    importpath = "github.com/silence-operator/silence-operator/internal/alertmanager",
+    visibility = ["//:__subpackages__"],
+    deps = [
+        "//api/v1alpha1",
+        "@com_github_go_openapi_strfmt//:strfmt",
+        "@com_github_prometheus_alertmanager//api/v2/client",
+        "@com_github_prometheus_alertmanager//api/v2/client/silence",
+        "@com_github_prometheus_alertmanager//api/v2/models",
+        "@io_k8s_sigs_controller_runtime//:controller-runtime",
+    ],
+)
+
+license_check()

@@ -1,5 +1,5 @@
 /*
-Copyright 2025.
+Copyright 2026 Silence-Operator Maintainers.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -60,8 +60,4 @@ type SilenceList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Silence `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&Silence{}, &SilenceList{})
 }

@@ -13,3 +13,13 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+
+// Package unused re-exports honnef.co/go/tools/unused's analysis.Analyzer for nogo.
+package unused
+
+import (
+	hcunused "honnef.co/go/tools/unused"
+)
+
+// Analyzer is the interface nogo expects: a plain *analysis.Analyzer.
+var Analyzer = hcunused.Analyzer.Analyzer

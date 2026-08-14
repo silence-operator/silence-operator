@@ -1,5 +1,5 @@
 /*
-Copyright 2025.
+Copyright 2026 Silence-Operator Maintainers.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -51,7 +51,12 @@ var _ = Describe("Silence Controller", func() {
 						Name:      resourceName,
 						Namespace: "default",
 					},
-					// TODO(user): Specify other spec details if needed.
+					Spec: monitoringv1alpha1.SilenceSpec{
+						Comment: "test silence",
+						Matchers: monitoringv1alpha1.Matchers{
+							{Name: "alertname", Value: "TestAlert"},
+						},
+					},
 				}
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
