@@ -19,10 +19,17 @@ package alertmanager
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
+	"strings"
 	"testing"
 	"time"
+
+	httptransport "github.com/go-openapi/runtime/client"
+	"github.com/go-openapi/strfmt"
 
 	"github.com/silence-operator/silence-operator/api/v1alpha1"
 )
@@ -62,52 +69,199 @@ func newTestAlertManager(t *testing.T, url string) *AlertManager {
 	return am
 }
 
-func TestNew(t *testing.T) {
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
+
+var errRoundTripStubbed = errors.New("roundTripFunc: no real request sent")
+
+// captureRequest swaps in a fake transport that records the outgoing request instead
+// of sending it, issues a GetSilences call to trigger one, and returns it.
+func captureRequest(t *testing.T, mgr *AlertManager) *http.Request {
+	t.Helper()
+
+	rt, ok := mgr.am.Transport.(*httptransport.Runtime)
+	if !ok {
+		t.Fatalf("Transport = %T, want *httptransport.Runtime", mgr.am.Transport)
+	}
+
+	var captured *http.Request
+	rt.Transport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		captured = req
+		return nil, errRoundTripStubbed
+	})
+
+	_, _ = mgr.GetSilences(nil)
+
+	if captured == nil {
+		t.Fatal("no request reached the fake transport")
+	}
+
+	return captured
+}
+
+func TestNew_InvalidURL(t *testing.T) {
+	_, err := New(&Config{URL: "http://[::1]:namedport"})
+	if err == nil {
+		t.Fatal("New() error = nil, want error for an unparseable url")
+	}
+}
+
+func TestNew_RequiresHost(t *testing.T) {
 	tests := []struct {
-		name    string
-		url     string
-		wantErr bool
+		name string
+		url  string
 	}{
-		{name: "url without scheme defaults to http", url: "alertmanager.default:9093"},
-		{name: "url with explicit scheme", url: "https://alertmanager.default:9093"},
-		{name: "invalid url", url: "http://[::1]:namedport", wantErr: true},
+		{name: "empty url", url: ""},
+		{name: "scheme with no host", url: "http://"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := New(&Config{URL: tt.url})
-
-			if (err != nil) != tt.wantErr {
-				t.Fatalf("New() error = %v, wantErr %v", err, tt.wantErr)
+			if err == nil {
+				t.Fatal("New() error = nil, want error for a url with no host")
 			}
 		})
 	}
 }
 
-// No AlertManagerID and no matching existing silence: a plain POST with an empty id.
-func TestUpsertSilence_CreatesNewSilence(t *testing.T) {
-	var postedID string
+func TestNew_RejectsUnsupportedScheme(t *testing.T) {
+	tests := []string{
+		"htttps://alertmanager.default:9093", // misspelled scheme
+		"ftp://alertmanager.default:9093",    // a real, but unsupported, scheme
+	}
+
+	for _, url := range tests {
+		t.Run(url, func(t *testing.T) {
+			_, err := New(&Config{URL: url})
+			if err == nil {
+				t.Fatalf("New() error = nil, want error for unsupported scheme in %q", url)
+			}
+		})
+	}
+}
+
+// Proves New()'s client actually reaches the configured host end to end.
+func TestNew_ResolvesBareHostPort(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(t, w, []map[string]any{})
+	}))
+	defer server.Close()
+
+	bareHostPort := strings.TrimPrefix(server.URL, "http://")
+
+	mgr := newTestAlertManager(t, bareHostPort)
+
+	if _, err := mgr.GetSilences(nil); err != nil {
+		t.Fatalf("GetSilences() error = %v, want nil", err)
+	}
+}
+
+// Asserts the scheme/host on the outgoing request directly, instead of inferring it
+// from whether a live connection happens to succeed or fail.
+func TestNew_SchemeAndHostReachTheRequest(t *testing.T) {
+	tests := []struct {
+		name       string
+		url        string
+		wantScheme string
+		wantHost   string
+	}{
+		{name: "explicit http scheme", url: "http://alertmanager.default:9093", wantScheme: "http", wantHost: "alertmanager.default:9093"},
+		{name: "explicit https scheme", url: "https://alertmanager.default:9093", wantScheme: "https", wantHost: "alertmanager.default:9093"},
+		{name: "bare host:port defaults to http", url: "alertmanager.default:9093", wantScheme: "http", wantHost: "alertmanager.default:9093"},
+		{name: "bare ip:port defaults to http", url: "127.0.0.1:9093", wantScheme: "http", wantHost: "127.0.0.1:9093"},
+		{name: "uppercase scheme is recognized as already having one", url: "HTTPS://alertmanager.default:9093", wantScheme: "https", wantHost: "alertmanager.default:9093"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mgr := newTestAlertManager(t, tt.url)
+
+			req := captureRequest(t, mgr)
+
+			if req.URL.Scheme != tt.wantScheme {
+				t.Errorf("request scheme = %q, want %q", req.URL.Scheme, tt.wantScheme)
+			}
+
+			if req.URL.Host != tt.wantHost {
+				t.Errorf("request host = %q, want %q", req.URL.Host, tt.wantHost)
+			}
+		})
+	}
+}
+
+// postedSilenceBody is what the wire body of a PostSilences call decodes to.
+type postedSilenceBody struct {
+	ID        string          `json:"id"`
+	Comment   string          `json:"comment"`
+	CreatedBy string          `json:"createdBy"`
+	StartsAt  time.Time       `json:"startsAt"`
+	EndsAt    time.Time       `json:"endsAt"`
+	Matchers  []postedMatcher `json:"matchers"`
+}
+
+type postedMatcher struct {
+	Name    string `json:"name"`
+	Value   string `json:"value"`
+	IsEqual bool   `json:"isEqual"`
+	IsRegex bool   `json:"isRegex"`
+}
+
+// silencesServerCapture records what a newSilencesServer handler observed.
+type silencesServerCapture struct {
+	getCalled  bool
+	getFilter  []string
+	postedBody []byte
+}
+
+func (c *silencesServerCapture) postedSilence(t *testing.T) postedSilenceBody {
+	t.Helper()
+
+	var body postedSilenceBody
+	if err := json.Unmarshal(c.postedBody, &body); err != nil {
+		t.Fatalf("failed to decode posted silence: %v", err)
+	}
+
+	return body
+}
+
+// newSilencesServer stubs GET/POST /api/v2/silences: GET returns getPayload verbatim,
+// POST always returns postSilenceID.
+func newSilencesServer(t *testing.T, getPayload []map[string]any, postSilenceID string) (*httptest.Server, *silencesServerCapture) {
+	t.Helper()
+
+	capture := &silencesServerCapture{}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == silencesPath:
-			writeJSON(t, w, []map[string]any{})
+			capture.getCalled = true
+			capture.getFilter = r.URL.Query()["filter"]
+			writeJSON(t, w, getPayload)
 		case r.Method == http.MethodPost && r.URL.Path == silencesPath:
-			var body struct {
-				ID string `json:"id"`
-			}
-			decodeJSON(t, r, &body)
-			postedID = body.ID
-			writeJSON(t, w, map[string]any{"silenceID": "new-silence-id"})
+			capture.postedBody = readAll(t, r.Body)
+			writeJSON(t, w, map[string]any{"silenceID": postSilenceID})
 		default:
-			t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
+			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
 		}
 	}))
-	defer server.Close()
+	t.Cleanup(server.Close)
 
-	am := newTestAlertManager(t, server.URL)
+	return server, capture
+}
 
-	id, err := am.UpsertSilence(context.Background(), newTestSilence(""), nil)
+// No AlertManagerID and no matching existing silence: a plain POST with an empty id.
+func TestUpsertSilence_CreatesNewSilence(t *testing.T) {
+	server, capture := newSilencesServer(t, []map[string]any{}, "new-silence-id")
+
+	mgr := newTestAlertManager(t, server.URL)
+
+	before := time.Now()
+
+	id, err := mgr.UpsertSilence(context.Background(), newTestSilence(""), nil)
 	if err != nil {
 		t.Fatalf("UpsertSilence() error = %v", err)
 	}
@@ -116,49 +270,93 @@ func TestUpsertSilence_CreatesNewSilence(t *testing.T) {
 		t.Errorf("UpsertSilence() id = %q, want %q", id, "new-silence-id")
 	}
 
-	if postedID != "" {
-		t.Errorf("PostSilences was called with id = %q, want empty (new silence)", postedID)
+	posted := capture.postedSilence(t)
+
+	if posted.ID != "" {
+		t.Errorf("posted id = %q, want empty (new silence)", posted.ID)
+	}
+
+	if posted.CreatedBy != "test-author" {
+		t.Errorf("posted createdBy = %q, want %q", posted.CreatedBy, "test-author")
+	}
+
+	if !strings.HasSuffix(posted.Comment, "Instance: test-instance") {
+		t.Errorf("posted comment = %q, want suffix %q", posted.Comment, "Instance: test-instance")
+	}
+
+	if posted.StartsAt.Before(before.Add(-time.Second)) {
+		t.Errorf("posted startsAt = %v, want ~now (nil startsAt defaults to now)", posted.StartsAt)
+	}
+
+	wantEndsAt := before.Add(time.Hour) // client.go anchors endsAt to time.Now(), not startsAt
+	if posted.EndsAt.Sub(wantEndsAt).Abs() > time.Second {
+		t.Errorf("posted endsAt = %v, want ~%v (now + SilenceDuration)", posted.EndsAt, wantEndsAt)
+	}
+}
+
+// A non-nil startsAt (what the controller passes when extending a known silence) must
+// be threaded through verbatim, not overridden by the nil-defaults-to-now path.
+func TestUpsertSilence_ThreadsExplicitStartsAt(t *testing.T) {
+	server, capture := newSilencesServer(t, []map[string]any{}, "known-id")
+
+	mgr := newTestAlertManager(t, server.URL)
+
+	before := time.Now()
+	explicitStartsAt := strfmt.DateTime(before.Add(-time.Hour))
+
+	if _, err := mgr.UpsertSilence(context.Background(), newTestSilence("known-id"), &explicitStartsAt); err != nil {
+		t.Fatalf("UpsertSilence() error = %v", err)
+	}
+
+	posted := capture.postedSilence(t)
+
+	if diff := posted.StartsAt.Sub(time.Time(explicitStartsAt)); diff.Abs() > time.Second {
+		t.Errorf("posted startsAt = %v, want %v", posted.StartsAt, time.Time(explicitStartsAt))
+	}
+
+	wantEndsAt := before.Add(time.Hour) // endsAt is anchored to now, not the explicit startsAt
+	if posted.EndsAt.Sub(wantEndsAt).Abs() > time.Second {
+		t.Errorf("posted endsAt = %v, want ~%v (now + SilenceDuration)", posted.EndsAt, wantEndsAt)
+	}
+}
+
+// The existing-silence lookup filters by Matchers.String(), not some other encoding.
+func TestUpsertSilence_FiltersExistingByMatcherString(t *testing.T) {
+	server, capture := newSilencesServer(t, []map[string]any{}, "id")
+
+	mgr := newTestAlertManager(t, server.URL)
+
+	if _, err := mgr.UpsertSilence(context.Background(), newTestSilence(""), nil); err != nil {
+		t.Fatalf("UpsertSilence() error = %v", err)
+	}
+
+	want := []string{"alertname=TestAlert"}
+	if !reflect.DeepEqual(capture.getFilter, want) {
+		t.Errorf("GetSilences filter = %v, want %v", capture.getFilter, want)
 	}
 }
 
 // A matching, non-expired existing silence is reused: its id is filled in and posted back.
 func TestUpsertSilence_ReusesMatchingExistingSilence(t *testing.T) {
-	var postedID string
+	server, capture := newSilencesServer(t, []map[string]any{
+		{
+			"id":     existingSilenceID,
+			"status": map[string]any{"state": "active"},
+			"matchers": []map[string]any{
+				{"name": "alertname", "value": "TestAlert", "isEqual": true, "isRegex": false},
+			},
+			"comment":   "old",
+			"createdBy": "old-author",
+			"startsAt":  time.Now().Format(time.RFC3339),
+			"endsAt":    time.Now().Add(time.Hour).Format(time.RFC3339),
+		},
+	}, existingSilenceID)
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodGet && r.URL.Path == silencesPath:
-			writeJSON(t, w, []map[string]any{
-				{
-					"id":     existingSilenceID,
-					"status": map[string]any{"state": "active"},
-					"matchers": []map[string]any{
-						{"name": "alertname", "value": "TestAlert", "isEqual": true, "isRegex": false},
-					},
-					"comment":   "old",
-					"createdBy": "old-author",
-					"startsAt":  time.Now().Format(time.RFC3339),
-					"endsAt":    time.Now().Add(time.Hour).Format(time.RFC3339),
-				},
-			})
-		case r.Method == http.MethodPost && r.URL.Path == silencesPath:
-			var body struct {
-				ID string `json:"id"`
-			}
-			decodeJSON(t, r, &body)
-			postedID = body.ID
-			writeJSON(t, w, map[string]any{"silenceID": existingSilenceID})
-		default:
-			t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
-		}
-	}))
-	defer server.Close()
-
-	am := newTestAlertManager(t, server.URL)
+	mgr := newTestAlertManager(t, server.URL)
 
 	s := newTestSilence("")
 
-	id, err := am.UpsertSilence(context.Background(), s, nil)
+	id, err := mgr.UpsertSilence(context.Background(), s, nil)
 	if err != nil {
 		t.Fatalf("UpsertSilence() error = %v", err)
 	}
@@ -167,8 +365,8 @@ func TestUpsertSilence_ReusesMatchingExistingSilence(t *testing.T) {
 		t.Errorf("UpsertSilence() id = %q, want %q", id, existingSilenceID)
 	}
 
-	if postedID != existingSilenceID {
-		t.Errorf("PostSilences was called with id = %q, want %q", postedID, existingSilenceID)
+	if got := capture.postedSilence(t).ID; got != existingSilenceID {
+		t.Errorf("posted id = %q, want %q", got, existingSilenceID)
 	}
 
 	if s.Status.AlertManagerID != existingSilenceID {
@@ -178,40 +376,23 @@ func TestUpsertSilence_ReusesMatchingExistingSilence(t *testing.T) {
 
 // An expired existing silence with matching matchers must not be reused.
 func TestUpsertSilence_SkipsExpiredSilence(t *testing.T) {
-	var postedID string
+	server, capture := newSilencesServer(t, []map[string]any{
+		{
+			"id":     "expired-id",
+			"status": map[string]any{"state": "expired"},
+			"matchers": []map[string]any{
+				{"name": "alertname", "value": "TestAlert", "isEqual": true, "isRegex": false},
+			},
+			"comment":   "old",
+			"createdBy": "old-author",
+			"startsAt":  time.Now().Add(-2 * time.Hour).Format(time.RFC3339),
+			"endsAt":    time.Now().Add(-time.Hour).Format(time.RFC3339),
+		},
+	}, "brand-new-id")
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodGet && r.URL.Path == silencesPath:
-			writeJSON(t, w, []map[string]any{
-				{
-					"id":     "expired-id",
-					"status": map[string]any{"state": "expired"},
-					"matchers": []map[string]any{
-						{"name": "alertname", "value": "TestAlert", "isEqual": true, "isRegex": false},
-					},
-					"comment":   "old",
-					"createdBy": "old-author",
-					"startsAt":  time.Now().Add(-2 * time.Hour).Format(time.RFC3339),
-					"endsAt":    time.Now().Add(-time.Hour).Format(time.RFC3339),
-				},
-			})
-		case r.Method == http.MethodPost && r.URL.Path == silencesPath:
-			var body struct {
-				ID string `json:"id"`
-			}
-			decodeJSON(t, r, &body)
-			postedID = body.ID
-			writeJSON(t, w, map[string]any{"silenceID": "brand-new-id"})
-		default:
-			t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
-		}
-	}))
-	defer server.Close()
+	mgr := newTestAlertManager(t, server.URL)
 
-	am := newTestAlertManager(t, server.URL)
-
-	id, err := am.UpsertSilence(context.Background(), newTestSilence(""), nil)
+	id, err := mgr.UpsertSilence(context.Background(), newTestSilence(""), nil)
 	if err != nil {
 		t.Fatalf("UpsertSilence() error = %v", err)
 	}
@@ -220,38 +401,121 @@ func TestUpsertSilence_SkipsExpiredSilence(t *testing.T) {
 		t.Errorf("UpsertSilence() id = %q, want %q", id, "brand-new-id")
 	}
 
-	if postedID != "" {
-		t.Errorf("PostSilences was called with id = %q, want empty (expired silence must not be reused)", postedID)
+	if got := capture.postedSilence(t).ID; got != "" {
+		t.Errorf("posted id = %q, want empty (expired silence must not be reused)", got)
+	}
+}
+
+// An expired entry earlier in the list must be skipped (continue), not abort the
+// scan (break) before a later, matching active entry is ever examined.
+func TestUpsertSilence_SkipsExpiredThenReusesActive(t *testing.T) {
+	server, capture := newSilencesServer(t, []map[string]any{
+		{
+			"id":     "expired-id",
+			"status": map[string]any{"state": "expired"},
+			"matchers": []map[string]any{
+				{"name": "alertname", "value": "TestAlert", "isEqual": true, "isRegex": false},
+			},
+			"comment":   "old",
+			"createdBy": "old-author",
+			"startsAt":  time.Now().Add(-2 * time.Hour).Format(time.RFC3339),
+			"endsAt":    time.Now().Add(-time.Hour).Format(time.RFC3339),
+		},
+		{
+			"id":     existingSilenceID,
+			"status": map[string]any{"state": "active"},
+			"matchers": []map[string]any{
+				{"name": "alertname", "value": "TestAlert", "isEqual": true, "isRegex": false},
+			},
+			"comment":   "old",
+			"createdBy": "old-author",
+			"startsAt":  time.Now().Format(time.RFC3339),
+			"endsAt":    time.Now().Add(time.Hour).Format(time.RFC3339),
+		},
+	}, existingSilenceID)
+
+	mgr := newTestAlertManager(t, server.URL)
+
+	id, err := mgr.UpsertSilence(context.Background(), newTestSilence(""), nil)
+	if err != nil {
+		t.Fatalf("UpsertSilence() error = %v", err)
+	}
+
+	if id != existingSilenceID {
+		t.Errorf("UpsertSilence() id = %q, want %q", id, existingSilenceID)
+	}
+
+	if got := capture.postedSilence(t).ID; got != existingSilenceID {
+		t.Errorf("posted id = %q, want %q", got, existingSilenceID)
+	}
+}
+
+// PostSilences carries the full matcher array, not just a count.
+func TestUpsertSilence_PostsAllMatchers(t *testing.T) {
+	server, capture := newSilencesServer(t, []map[string]any{}, "id")
+
+	mgr := newTestAlertManager(t, server.URL)
+
+	s := &v1alpha1.Silence{
+		Spec: v1alpha1.SilenceSpec{
+			Comment: "test silence",
+			Matchers: v1alpha1.Matchers{
+				{Name: "alertname", Value: "TestAlert", IsEqual: true, IsRegex: false},
+				{Name: "severity", Value: "crit.*", IsEqual: false, IsRegex: true},
+			},
+		},
+	}
+
+	if _, err := mgr.UpsertSilence(context.Background(), s, nil); err != nil {
+		t.Fatalf("UpsertSilence() error = %v", err)
+	}
+
+	want := []postedMatcher{
+		{Name: "alertname", Value: "TestAlert", IsEqual: true, IsRegex: false},
+		{Name: "severity", Value: "crit.*", IsEqual: false, IsRegex: true},
+	}
+
+	if got := capture.postedSilence(t).Matchers; !reflect.DeepEqual(got, want) {
+		t.Errorf("posted matchers = %+v, want %+v", got, want)
+	}
+}
+
+// A failure looking up existing silences must abort, not fall through to creating a new one.
+func TestUpsertSilence_ReturnsErrorWhenLookupFails(t *testing.T) {
+	mgr := newTestAlertManager(t, errServer(t).URL)
+
+	if _, err := mgr.UpsertSilence(context.Background(), newTestSilence(""), nil); err == nil {
+		t.Fatal("UpsertSilence() error = nil, want error when the existing-silence lookup fails")
+	}
+}
+
+func TestUpsertSilence_ReturnsErrorWhenPostFails(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == silencesPath:
+			writeJSON(t, w, []map[string]any{})
+		case r.Method == http.MethodPost && r.URL.Path == silencesPath:
+			http.Error(w, "boom", http.StatusInternalServerError)
+		default:
+			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
+		}
+	}))
+	t.Cleanup(server.Close)
+
+	mgr := newTestAlertManager(t, server.URL)
+
+	if _, err := mgr.UpsertSilence(context.Background(), newTestSilence(""), nil); err == nil {
+		t.Fatal("UpsertSilence() error = nil, want error when PostSilences fails")
 	}
 }
 
 // A Silence that already carries an AlertManagerID skips the lookup and posts the known id directly.
 func TestUpsertSilence_UpdatesKnownSilence(t *testing.T) {
-	getCalled := false
+	server, capture := newSilencesServer(t, []map[string]any{}, "known-id")
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodGet && r.URL.Path == silencesPath:
-			getCalled = true
-			writeJSON(t, w, []map[string]any{})
-		case r.Method == http.MethodPost && r.URL.Path == silencesPath:
-			var body struct {
-				ID string `json:"id"`
-			}
-			decodeJSON(t, r, &body)
-			if body.ID != "known-id" {
-				t.Errorf("PostSilences id = %q, want %q", body.ID, "known-id")
-			}
-			writeJSON(t, w, map[string]any{"silenceID": "known-id"})
-		default:
-			t.Fatalf("unexpected request %s %s", r.Method, r.URL.Path)
-		}
-	}))
-	defer server.Close()
+	mgr := newTestAlertManager(t, server.URL)
 
-	am := newTestAlertManager(t, server.URL)
-
-	id, err := am.UpsertSilence(context.Background(), newTestSilence("known-id"), nil)
+	id, err := mgr.UpsertSilence(context.Background(), newTestSilence("known-id"), nil)
 	if err != nil {
 		t.Fatalf("UpsertSilence() error = %v", err)
 	}
@@ -260,8 +524,47 @@ func TestUpsertSilence_UpdatesKnownSilence(t *testing.T) {
 		t.Errorf("UpsertSilence() id = %q, want %q", id, "known-id")
 	}
 
-	if getCalled {
+	if got := capture.postedSilence(t).ID; got != "known-id" {
+		t.Errorf("posted id = %q, want %q", got, "known-id")
+	}
+
+	if capture.getCalled {
 		t.Errorf("GetSilences was called even though AlertManagerID was already known")
+	}
+}
+
+func TestGetSilence(t *testing.T) {
+	var gotPath string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		writeJSON(t, w, map[string]any{
+			"id":     "some-id",
+			"status": map[string]any{"state": "active"},
+			"matchers": []map[string]any{
+				{"name": "alertname", "value": "TestAlert", "isEqual": true, "isRegex": false},
+			},
+			"comment":   "c",
+			"createdBy": "a",
+			"startsAt":  time.Now().Format(time.RFC3339),
+			"endsAt":    time.Now().Add(time.Hour).Format(time.RFC3339),
+		})
+	}))
+	defer server.Close()
+
+	mgr := newTestAlertManager(t, server.URL)
+
+	result, err := mgr.GetSilence("some-id")
+	if err != nil {
+		t.Fatalf("GetSilence() error = %v", err)
+	}
+
+	if gotPath != "/api/v2/silence/some-id" {
+		t.Errorf("GetSilence() called path = %q, want %q", gotPath, "/api/v2/silence/some-id")
+	}
+
+	if got := *result.GetPayload().ID; got != "some-id" {
+		t.Errorf("GetSilence() payload id = %q, want %q", got, "some-id")
 	}
 }
 
@@ -270,7 +573,8 @@ func TestDeleteSilence(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodDelete {
-			t.Fatalf("unexpected method %s", r.Method)
+			t.Errorf("unexpected method %s", r.Method)
+			return
 		}
 
 		deletedID = r.URL.Path
@@ -312,20 +616,59 @@ func TestGetSilences_PassesFilter(t *testing.T) {
 	}
 }
 
+// errServer always responds with 500, for exercising error-return paths.
+func errServer(t *testing.T) *httptest.Server {
+	t.Helper()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "boom", http.StatusInternalServerError)
+	}))
+	t.Cleanup(server.Close)
+
+	return server
+}
+
+func TestGetSilence_ReturnsError(t *testing.T) {
+	mgr := newTestAlertManager(t, errServer(t).URL)
+
+	if _, err := mgr.GetSilence("some-id"); err == nil {
+		t.Fatal("GetSilence() error = nil, want error on server failure")
+	}
+}
+
+func TestGetSilences_ReturnsError(t *testing.T) {
+	mgr := newTestAlertManager(t, errServer(t).URL)
+
+	if _, err := mgr.GetSilences(nil); err == nil {
+		t.Fatal("GetSilences() error = nil, want error on server failure")
+	}
+}
+
+func TestDeleteSilence_ReturnsError(t *testing.T) {
+	mgr := newTestAlertManager(t, errServer(t).URL)
+
+	if err := mgr.DeleteSilence("some-id"); err == nil {
+		t.Fatal("DeleteSilence() error = nil, want error on server failure")
+	}
+}
+
 func writeJSON(t *testing.T, w http.ResponseWriter, v any) {
 	t.Helper()
 
 	w.Header().Set("Content-Type", "application/json")
 
 	if err := json.NewEncoder(w).Encode(v); err != nil {
-		t.Fatalf("failed to write json response: %v", err)
+		t.Errorf("failed to write json response: %v", err)
 	}
 }
 
-func decodeJSON(t *testing.T, r *http.Request, v any) {
+func readAll(t *testing.T, r io.Reader) []byte {
 	t.Helper()
 
-	if err := json.NewDecoder(r.Body).Decode(v); err != nil {
-		t.Fatalf("failed to decode json request: %v", err)
+	body, err := io.ReadAll(r)
+	if err != nil {
+		t.Errorf("failed to read request body: %v", err)
 	}
+
+	return body
 }

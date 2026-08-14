@@ -38,5 +38,9 @@ go_test(
     name = "alertmanager_test",
     srcs = ["client_test.go"],
     embed = [":alertmanager"],
-    deps = ["//api/v1alpha1"],
+    deps = [
+        "//api/v1alpha1",
+        "@com_github_go_openapi_runtime//client",
+        "@com_github_go_openapi_strfmt//:strfmt",
+    ],
 )

@@ -20,6 +20,8 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/go-openapi/strfmt"
@@ -153,14 +155,31 @@ type Config struct {
 	SilenceDuration time.Duration
 }
 
+// schemePrefix matches a "scheme://" prefix (RFC 3986), so an unrecognized scheme
+// can be rejected explicitly instead of being silently mangled into a garbage host.
+var schemePrefix = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9+.-]*://`)
+
 func New(cfg *Config) (*AlertManager, error) {
-	amURL, err := url.Parse(cfg.URL)
+	rawURL := cfg.URL
+	lower := strings.ToLower(rawURL)
+
+	switch {
+	case strings.HasPrefix(lower, "http://"), strings.HasPrefix(lower, "https://"):
+		// already has a supported scheme
+	case schemePrefix.MatchString(rawURL):
+		return nil, fmt.Errorf("alertmanager url %q has an unsupported scheme (must be http or https)", cfg.URL)
+	default:
+		// A bare "host:port" (no scheme) is ambiguous or outright unparseable otherwise.
+		rawURL = "http://" + rawURL
+	}
+
+	amURL, err := url.Parse(rawURL)
 	if err != nil {
 		return nil, err
 	}
 
-	if amURL.Scheme == "" {
-		amURL.Scheme = "http"
+	if amURL.Host == "" {
+		return nil, fmt.Errorf("alertmanager url %q has no host", cfg.URL)
 	}
 
 	transportConfig := client.DefaultTransportConfig().

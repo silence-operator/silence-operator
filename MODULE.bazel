@@ -45,4 +45,4 @@ go_deps.gazelle_override(
     build_file_generation = "clean",
     path = "github.com/google/cel-go",
 )
-use_repo(go_deps, "co_honnef_go_tools", "com_github_go_openapi_strfmt", "com_github_gordonklaus_ineffassign", "com_github_kisielk_errcheck", "com_github_nunnatsa_ginkgolinter", "com_github_onsi_ginkgo_v2", "com_github_onsi_gomega", "com_github_prometheus_alertmanager", "io_k8s_apimachinery", "io_k8s_client_go", "io_k8s_sigs_controller_runtime", "io_k8s_utils")
+use_repo(go_deps, "co_honnef_go_tools", "com_github_go_openapi_runtime", "com_github_go_openapi_strfmt", "com_github_gordonklaus_ineffassign", "com_github_kisielk_errcheck", "com_github_nunnatsa_ginkgolinter", "com_github_onsi_ginkgo_v2", "com_github_onsi_gomega", "com_github_prometheus_alertmanager", "io_k8s_apimachinery", "io_k8s_client_go", "io_k8s_sigs_controller_runtime", "io_k8s_utils")
