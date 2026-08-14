@@ -54,7 +54,6 @@ license_check(
 # Versions below must track the bazel_dep() versions in MODULE.bazel; the toolchains export their own VERSION constant, these three don't.
 notice(
     name = "notice",
-    template = "//hack:notice.tpl",
     bazel_dep_licenses = [
         "@rules_go//:LICENSE.txt",
         "//bazel/third_party:gazelle-LICENSE",
@@ -75,4 +74,5 @@ notice(
         "kubeconform|" + KUBECONFORM_VERSION + "|Apache-2.0|https://github.com/yannh/kubeconform",
         "gitleaks|" + GITLEAKS_VERSION + "|MIT|https://github.com/gitleaks/gitleaks",
     ],
+    template = "//hack:notice.tpl",
 )
