@@ -111,6 +111,13 @@ jobs:
         run: |
           rm -f "$(bazel info output_path)/_coverage/_coverage_report.dat"
           bazel coverage --config=ci //...
+
+      # extract-coverage is a local action needing action.yml on disk, which the base commit checked out above may predate; safe to switch back since the coverage report lives outside git, under Bazel's output tree.
+      - name: Check out PR head commit
+        if: github.event_name == 'pull_request' && steps.base-compute.outcome == 'success'
+        continue-on-error: true
+        run: git checkout --force ${{ github.event.pull_request.head.sha }}
+
       - name: Extract base coverage percentage
         if: github.event_name == 'pull_request' && steps.base-compute.outcome == 'success'
         continue-on-error: true
