@@ -102,43 +102,23 @@ func captureRequest(t *testing.T, mgr *AlertManager) *http.Request {
 	return captured
 }
 
-func TestNew_InvalidURL(t *testing.T) {
-	_, err := New(&Config{URL: "http://[::1]:namedport"})
-	if err == nil {
-		t.Fatal("New() error = nil, want error for an unparseable url")
-	}
-}
-
-func TestNew_RequiresHost(t *testing.T) {
+func TestNew_RejectsInvalidConfig(t *testing.T) {
 	tests := []struct {
 		name string
 		url  string
 	}{
+		{name: "unparseable url", url: "http://[::1]:namedport"},
 		{name: "empty url", url: ""},
 		{name: "scheme with no host", url: "http://"},
+		{name: "misspelled scheme", url: "htttps://alertmanager.default:9093"},
+		{name: "unsupported scheme", url: "ftp://alertmanager.default:9093"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			_, err := New(&Config{URL: tt.url})
 			if err == nil {
-				t.Fatal("New() error = nil, want error for a url with no host")
-			}
-		})
-	}
-}
-
-func TestNew_RejectsUnsupportedScheme(t *testing.T) {
-	tests := []string{
-		"htttps://alertmanager.default:9093", // misspelled scheme
-		"ftp://alertmanager.default:9093",    // a real, but unsupported, scheme
-	}
-
-	for _, url := range tests {
-		t.Run(url, func(t *testing.T) {
-			_, err := New(&Config{URL: url})
-			if err == nil {
-				t.Fatalf("New() error = nil, want error for unsupported scheme in %q", url)
+				t.Fatalf("New() error = nil, want error for url %q", tt.url)
 			}
 		})
 	}
@@ -149,7 +129,7 @@ func TestNew_ResolvesBareHostPort(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(t, w, []map[string]any{})
 	}))
-	defer server.Close()
+	t.Cleanup(server.Close)
 
 	bareHostPort := strings.TrimPrefix(server.URL, "http://")
 
@@ -228,9 +208,46 @@ func (c *silencesServerCapture) postedSilence(t *testing.T) postedSilenceBody {
 	return body
 }
 
+// activeSilence is a newSilencesServer getPayload entry matching newTestSilence's matcher.
+func activeSilence(id string) map[string]any {
+	return silencePayload(id, "active", time.Now(), time.Now().Add(time.Hour))
+}
+
+// expiredSilence is a newSilencesServer getPayload entry matching newTestSilence's matcher.
+func expiredSilence(id string) map[string]any {
+	return silencePayload(id, "expired", time.Now().Add(-2*time.Hour), time.Now().Add(-time.Hour))
+}
+
+func silencePayload(id, state string, startsAt, endsAt time.Time) map[string]any {
+	return map[string]any{
+		"id":     id,
+		"status": map[string]any{"state": state},
+		"matchers": []map[string]any{
+			{"name": "alertname", "value": "TestAlert", "isEqual": true, "isRegex": false},
+		},
+		"comment":   "old",
+		"createdBy": "old-author",
+		"startsAt":  startsAt.Format(time.RFC3339),
+		"endsAt":    endsAt.Format(time.RFC3339),
+	}
+}
+
 // newSilencesServer stubs GET/POST /api/v2/silences: GET returns getPayload verbatim,
 // POST always returns postSilenceID.
 func newSilencesServer(t *testing.T, getPayload []map[string]any, postSilenceID string) (*httptest.Server, *silencesServerCapture) {
+	t.Helper()
+
+	return newSilencesServerHandler(t, getPayload, postSilenceID, false)
+}
+
+// newFailingPostSilencesServer is newSilencesServer, but POST /api/v2/silences fails with 500.
+func newFailingPostSilencesServer(t *testing.T, getPayload []map[string]any) (*httptest.Server, *silencesServerCapture) {
+	t.Helper()
+
+	return newSilencesServerHandler(t, getPayload, "", true)
+}
+
+func newSilencesServerHandler(t *testing.T, getPayload []map[string]any, postSilenceID string, postFails bool) (*httptest.Server, *silencesServerCapture) {
 	t.Helper()
 
 	capture := &silencesServerCapture{}
@@ -242,6 +259,11 @@ func newSilencesServer(t *testing.T, getPayload []map[string]any, postSilenceID 
 			capture.getFilter = r.URL.Query()["filter"]
 			writeJSON(t, w, getPayload)
 		case r.Method == http.MethodPost && r.URL.Path == silencesPath:
+			if postFails {
+				http.Error(w, "boom", http.StatusInternalServerError)
+				return
+			}
+
 			capture.postedBody = readAll(t, r.Body)
 			writeJSON(t, w, map[string]any{"silenceID": postSilenceID})
 		default:
@@ -339,17 +361,7 @@ func TestUpsertSilence_FiltersExistingByMatcherString(t *testing.T) {
 // A matching, non-expired existing silence is reused: its id is filled in and posted back.
 func TestUpsertSilence_ReusesMatchingExistingSilence(t *testing.T) {
 	server, capture := newSilencesServer(t, []map[string]any{
-		{
-			"id":     existingSilenceID,
-			"status": map[string]any{"state": "active"},
-			"matchers": []map[string]any{
-				{"name": "alertname", "value": "TestAlert", "isEqual": true, "isRegex": false},
-			},
-			"comment":   "old",
-			"createdBy": "old-author",
-			"startsAt":  time.Now().Format(time.RFC3339),
-			"endsAt":    time.Now().Add(time.Hour).Format(time.RFC3339),
-		},
+		activeSilence(existingSilenceID),
 	}, existingSilenceID)
 
 	mgr := newTestAlertManager(t, server.URL)
@@ -377,17 +389,7 @@ func TestUpsertSilence_ReusesMatchingExistingSilence(t *testing.T) {
 // An expired existing silence with matching matchers must not be reused.
 func TestUpsertSilence_SkipsExpiredSilence(t *testing.T) {
 	server, capture := newSilencesServer(t, []map[string]any{
-		{
-			"id":     "expired-id",
-			"status": map[string]any{"state": "expired"},
-			"matchers": []map[string]any{
-				{"name": "alertname", "value": "TestAlert", "isEqual": true, "isRegex": false},
-			},
-			"comment":   "old",
-			"createdBy": "old-author",
-			"startsAt":  time.Now().Add(-2 * time.Hour).Format(time.RFC3339),
-			"endsAt":    time.Now().Add(-time.Hour).Format(time.RFC3339),
-		},
+		expiredSilence("expired-id"),
 	}, "brand-new-id")
 
 	mgr := newTestAlertManager(t, server.URL)
@@ -410,28 +412,8 @@ func TestUpsertSilence_SkipsExpiredSilence(t *testing.T) {
 // scan (break) before a later, matching active entry is ever examined.
 func TestUpsertSilence_SkipsExpiredThenReusesActive(t *testing.T) {
 	server, capture := newSilencesServer(t, []map[string]any{
-		{
-			"id":     "expired-id",
-			"status": map[string]any{"state": "expired"},
-			"matchers": []map[string]any{
-				{"name": "alertname", "value": "TestAlert", "isEqual": true, "isRegex": false},
-			},
-			"comment":   "old",
-			"createdBy": "old-author",
-			"startsAt":  time.Now().Add(-2 * time.Hour).Format(time.RFC3339),
-			"endsAt":    time.Now().Add(-time.Hour).Format(time.RFC3339),
-		},
-		{
-			"id":     existingSilenceID,
-			"status": map[string]any{"state": "active"},
-			"matchers": []map[string]any{
-				{"name": "alertname", "value": "TestAlert", "isEqual": true, "isRegex": false},
-			},
-			"comment":   "old",
-			"createdBy": "old-author",
-			"startsAt":  time.Now().Format(time.RFC3339),
-			"endsAt":    time.Now().Add(time.Hour).Format(time.RFC3339),
-		},
+		expiredSilence("expired-id"),
+		activeSilence(existingSilenceID),
 	}, existingSilenceID)
 
 	mgr := newTestAlertManager(t, server.URL)
@@ -490,17 +472,7 @@ func TestUpsertSilence_ReturnsErrorWhenLookupFails(t *testing.T) {
 }
 
 func TestUpsertSilence_ReturnsErrorWhenPostFails(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch {
-		case r.Method == http.MethodGet && r.URL.Path == silencesPath:
-			writeJSON(t, w, []map[string]any{})
-		case r.Method == http.MethodPost && r.URL.Path == silencesPath:
-			http.Error(w, "boom", http.StatusInternalServerError)
-		default:
-			t.Errorf("unexpected request %s %s", r.Method, r.URL.Path)
-		}
-	}))
-	t.Cleanup(server.Close)
+	server, _ := newFailingPostSilencesServer(t, []map[string]any{})
 
 	mgr := newTestAlertManager(t, server.URL)
 
@@ -533,75 +505,65 @@ func TestUpsertSilence_UpdatesKnownSilence(t *testing.T) {
 	}
 }
 
-func TestGetSilence(t *testing.T) {
-	var gotPath string
+func TestGetSilenceAndDeleteSilence_CallSilenceByIDPath(t *testing.T) {
+	tests := []struct {
+		name       string
+		wantMethod string
+		call       func(t *testing.T, mgr *AlertManager) // makes the request and checks its own return value
+	}{
+		{
+			name:       "GetSilence",
+			wantMethod: http.MethodGet,
+			call: func(t *testing.T, mgr *AlertManager) {
+				result, err := mgr.GetSilence("some-id")
+				if err != nil {
+					t.Fatalf("GetSilence() error = %v", err)
+				}
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotPath = r.URL.Path
-		writeJSON(t, w, map[string]any{
-			"id":     "some-id",
-			"status": map[string]any{"state": "active"},
-			"matchers": []map[string]any{
-				{"name": "alertname", "value": "TestAlert", "isEqual": true, "isRegex": false},
+				if got := *result.GetPayload().ID; got != "some-id" {
+					t.Errorf("GetSilence() payload id = %q, want %q", got, "some-id")
+				}
 			},
-			"comment":   "c",
-			"createdBy": "a",
-			"startsAt":  time.Now().Format(time.RFC3339),
-			"endsAt":    time.Now().Add(time.Hour).Format(time.RFC3339),
+		},
+		{
+			name:       "DeleteSilence",
+			wantMethod: http.MethodDelete,
+			call: func(t *testing.T, mgr *AlertManager) {
+				if err := mgr.DeleteSilence("some-id"); err != nil {
+					t.Fatalf("DeleteSilence() error = %v", err)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var gotMethod, gotPath string
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				gotMethod = r.Method
+				gotPath = r.URL.Path
+				writeJSON(t, w, activeSilence("some-id"))
+			}))
+			t.Cleanup(server.Close)
+
+			mgr := newTestAlertManager(t, server.URL)
+
+			tt.call(t, mgr)
+
+			if gotMethod != tt.wantMethod {
+				t.Errorf("%s() called method = %q, want %q", tt.name, gotMethod, tt.wantMethod)
+			}
+
+			if gotPath != "/api/v2/silence/some-id" {
+				t.Errorf("%s() called path = %q, want %q", tt.name, gotPath, "/api/v2/silence/some-id")
+			}
 		})
-	}))
-	defer server.Close()
-
-	mgr := newTestAlertManager(t, server.URL)
-
-	result, err := mgr.GetSilence("some-id")
-	if err != nil {
-		t.Fatalf("GetSilence() error = %v", err)
-	}
-
-	if gotPath != "/api/v2/silence/some-id" {
-		t.Errorf("GetSilence() called path = %q, want %q", gotPath, "/api/v2/silence/some-id")
-	}
-
-	if got := *result.GetPayload().ID; got != "some-id" {
-		t.Errorf("GetSilence() payload id = %q, want %q", got, "some-id")
-	}
-}
-
-func TestDeleteSilence(t *testing.T) {
-	deletedID := ""
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodDelete {
-			t.Errorf("unexpected method %s", r.Method)
-			return
-		}
-
-		deletedID = r.URL.Path
-
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer server.Close()
-
-	am := newTestAlertManager(t, server.URL)
-
-	if err := am.DeleteSilence("some-id"); err != nil {
-		t.Fatalf("DeleteSilence() error = %v", err)
-	}
-
-	if deletedID != "/api/v2/silence/some-id" {
-		t.Errorf("DeleteSilence() called path = %q, want %q", deletedID, "/api/v2/silence/some-id")
 	}
 }
 
 func TestGetSilences_PassesFilter(t *testing.T) {
-	var gotFilter []string
-
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotFilter = r.URL.Query()["filter"]
-		writeJSON(t, w, []map[string]any{})
-	}))
-	defer server.Close()
+	server, capture := newSilencesServer(t, []map[string]any{}, "")
 
 	am := newTestAlertManager(t, server.URL)
 
@@ -611,8 +573,8 @@ func TestGetSilences_PassesFilter(t *testing.T) {
 		t.Fatalf("GetSilences() error = %v", err)
 	}
 
-	if len(gotFilter) != 1 || gotFilter[0] != filter[0] {
-		t.Errorf("GetSilences() filter query = %v, want %v", gotFilter, filter)
+	if len(capture.getFilter) != 1 || capture.getFilter[0] != filter[0] {
+		t.Errorf("GetSilences() filter query = %v, want %v", capture.getFilter, filter)
 	}
 }
 
@@ -628,27 +590,41 @@ func errServer(t *testing.T) *httptest.Server {
 	return server
 }
 
-func TestGetSilence_ReturnsError(t *testing.T) {
-	mgr := newTestAlertManager(t, errServer(t).URL)
-
-	if _, err := mgr.GetSilence("some-id"); err == nil {
-		t.Fatal("GetSilence() error = nil, want error on server failure")
+func TestAlertManager_ReturnsErrorOnServerFailure(t *testing.T) {
+	tests := []struct {
+		name string
+		call func(mgr *AlertManager) error
+	}{
+		{
+			name: "GetSilence",
+			call: func(mgr *AlertManager) error {
+				_, err := mgr.GetSilence("some-id")
+				return err
+			},
+		},
+		{
+			name: "GetSilences",
+			call: func(mgr *AlertManager) error {
+				_, err := mgr.GetSilences(nil)
+				return err
+			},
+		},
+		{
+			name: "DeleteSilence",
+			call: func(mgr *AlertManager) error {
+				return mgr.DeleteSilence("some-id")
+			},
+		},
 	}
-}
 
-func TestGetSilences_ReturnsError(t *testing.T) {
-	mgr := newTestAlertManager(t, errServer(t).URL)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			mgr := newTestAlertManager(t, errServer(t).URL)
 
-	if _, err := mgr.GetSilences(nil); err == nil {
-		t.Fatal("GetSilences() error = nil, want error on server failure")
-	}
-}
-
-func TestDeleteSilence_ReturnsError(t *testing.T) {
-	mgr := newTestAlertManager(t, errServer(t).URL)
-
-	if err := mgr.DeleteSilence("some-id"); err == nil {
-		t.Fatal("DeleteSilence() error = nil, want error on server failure")
+			if err := tt.call(mgr); err == nil {
+				t.Fatalf("%s() error = nil, want error on server failure", tt.name)
+			}
+		})
 	}
 }
 
