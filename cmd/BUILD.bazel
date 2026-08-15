@@ -12,31 +12,33 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-load("@rules_go//go:def.bzl", "go_binary", "go_library")
+load("@rules_go//go:def.bzl", "go_binary", "go_library", "go_test")
 load("//bazel:addlicense.bzl", "license_check")
 
 package(default_package_metadata = ["//:package_metadata"])
 
 go_library(
     name = "cmd_lib",
-    srcs = ["main.go"],
+    srcs = [
+        "flags.go",
+        "main.go",
+    ],
     importpath = "github.com/silence-operator/silence-operator/cmd",
     visibility = ["//visibility:private"],
     deps = [
         "//api/v1alpha1",
         "//internal/alertmanager",
         "//internal/controller",
+        "//internal/observability",
+        "//internal/tlsutil",
         "@io_k8s_apimachinery//pkg/runtime",
         "@io_k8s_apimachinery//pkg/util/runtime",
         "@io_k8s_client_go//kubernetes/scheme",
         "@io_k8s_client_go//plugin/pkg/client/auth",
         "@io_k8s_sigs_controller_runtime//:controller-runtime",
-        "@io_k8s_sigs_controller_runtime//pkg/certwatcher",
         "@io_k8s_sigs_controller_runtime//pkg/config",
         "@io_k8s_sigs_controller_runtime//pkg/healthz",
         "@io_k8s_sigs_controller_runtime//pkg/log/zap",
-        "@io_k8s_sigs_controller_runtime//pkg/metrics/filters",
-        "@io_k8s_sigs_controller_runtime//pkg/metrics/server",
         "@io_k8s_sigs_controller_runtime//pkg/webhook",
         "@io_k8s_utils//ptr",
     ],
@@ -49,3 +51,10 @@ go_binary(
 )
 
 license_check()
+
+go_test(
+    name = "cmd_test",
+    srcs = ["flags_test.go"],
+    embed = [":cmd_lib"],
+    deps = ["@io_k8s_sigs_controller_runtime//pkg/log/zap"],
+)
