@@ -116,6 +116,8 @@ func TestNew_RejectsInvalidConfig(t *testing.T) {
 		{name: "scheme with no host", url: "http://"},
 		{name: "misspelled scheme", url: "htttps://" + testAlertmanagerHostPort},
 		{name: "unsupported scheme", url: "ftp://" + testAlertmanagerHostPort},
+		{name: "basic auth in url", url: "http://user:pass@" + testAlertmanagerHostPort},
+		{name: "username only in url", url: "http://user@" + testAlertmanagerHostPort},
 	}
 
 	for _, tt := range tests {

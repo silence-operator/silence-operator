@@ -182,6 +182,11 @@ func New(cfg *Config) (*AlertManager, error) {
 		return nil, fmt.Errorf("alertmanager url %q has no host", cfg.URL)
 	}
 
+	if amURL.User != nil {
+		// Credentials would otherwise be silently dropped: not wired into the HTTP client.
+		return nil, fmt.Errorf("alertmanager url %q must not contain userinfo (basic auth via URL is not supported)", cfg.URL)
+	}
+
 	transportConfig := client.DefaultTransportConfig().
 		WithHost(amURL.Host).
 		WithSchemes([]string{amURL.Scheme})
