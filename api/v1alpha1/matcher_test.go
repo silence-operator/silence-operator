@@ -21,6 +21,11 @@ import (
 	"testing"
 )
 
+const (
+	alertNameLabel = "alertname"
+	testAlertName  = "TestAlert"
+)
+
 func TestMatchers_String(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -35,35 +40,35 @@ func TestMatchers_String(t *testing.T) {
 		{
 			name: "equal",
 			matchers: Matchers{
-				{Name: "alertname", Value: "TestAlert", IsEqual: true, IsRegex: false},
+				{Name: alertNameLabel, Value: testAlertName, IsEqual: true, IsRegex: false},
 			},
 			want: []string{"alertname=TestAlert"},
 		},
 		{
 			name: "not equal",
 			matchers: Matchers{
-				{Name: "alertname", Value: "TestAlert", IsEqual: false, IsRegex: false},
+				{Name: alertNameLabel, Value: testAlertName, IsEqual: false, IsRegex: false},
 			},
 			want: []string{"alertname!=TestAlert"},
 		},
 		{
 			name: "regex",
 			matchers: Matchers{
-				{Name: "alertname", Value: "Test.*", IsEqual: true, IsRegex: true},
+				{Name: alertNameLabel, Value: "Test.*", IsEqual: true, IsRegex: true},
 			},
 			want: []string{"alertname=~Test.*"},
 		},
 		{
 			name: "negative regex",
 			matchers: Matchers{
-				{Name: "alertname", Value: "Test.*", IsEqual: false, IsRegex: true},
+				{Name: alertNameLabel, Value: "Test.*", IsEqual: false, IsRegex: true},
 			},
 			want: []string{"alertname!~Test.*"},
 		},
 		{
 			name: "multiple matchers preserve order",
 			matchers: Matchers{
-				{Name: "alertname", Value: "TestAlert", IsEqual: true, IsRegex: false},
+				{Name: alertNameLabel, Value: testAlertName, IsEqual: true, IsRegex: false},
 				{Name: "severity", Value: "critical|warning", IsEqual: true, IsRegex: true},
 				{Name: "team", Value: "sre", IsEqual: false, IsRegex: false},
 			},

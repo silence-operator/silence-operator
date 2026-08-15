@@ -17,6 +17,8 @@ kubeconform_repo = use_repo_rule("//bazel:kubeconform_toolchain.bzl", "kubeconfo
 
 gitleaks_repo = use_repo_rule("//bazel:gitleaks_toolchain.bzl", "gitleaks_repo")
 
+golangci_lint_repo = use_repo_rule("//bazel:golangci_lint_toolchain.bzl", "golangci_lint_repo")
+
 addlicense_repo(name = "addlicense_toolchain")
 
 kustomize_repo(name = "kustomize_toolchain")
@@ -26,6 +28,8 @@ helm_repo(name = "helm_toolchain")
 kubeconform_repo(name = "kubeconform_toolchain")
 
 gitleaks_repo(name = "gitleaks_toolchain")
+
+golangci_lint_repo(name = "golangci_lint_toolchain")
 
 go_sdk = use_extension("@rules_go//go:extensions.bzl", "go_sdk")
 go_sdk.from_file(go_mod = "//:go.mod")

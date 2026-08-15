@@ -35,8 +35,12 @@ import (
 )
 
 const (
-	silencesPath      = "/api/v2/silences"
-	existingSilenceID = "existing-id"
+	silencesPath             = "/api/v2/silences"
+	existingSilenceID        = "existing-id"
+	alertNameLabel           = "alertname"
+	testAlertName            = "TestAlert"
+	testAlertmanagerHostPort = "alertmanager.default:9093"
+	httpScheme               = "http"
 )
 
 func newTestSilence(amID string) *v1alpha1.Silence {
@@ -44,7 +48,7 @@ func newTestSilence(amID string) *v1alpha1.Silence {
 		Spec: v1alpha1.SilenceSpec{
 			Comment: "test silence",
 			Matchers: v1alpha1.Matchers{
-				{Name: "alertname", Value: "TestAlert", IsEqual: true, IsRegex: false},
+				{Name: alertNameLabel, Value: testAlertName, IsEqual: true, IsRegex: false},
 			},
 		},
 	}
@@ -110,8 +114,8 @@ func TestNew_RejectsInvalidConfig(t *testing.T) {
 		{name: "unparseable url", url: "http://[::1]:namedport"},
 		{name: "empty url", url: ""},
 		{name: "scheme with no host", url: "http://"},
-		{name: "misspelled scheme", url: "htttps://alertmanager.default:9093"},
-		{name: "unsupported scheme", url: "ftp://alertmanager.default:9093"},
+		{name: "misspelled scheme", url: "htttps://" + testAlertmanagerHostPort},
+		{name: "unsupported scheme", url: "ftp://" + testAlertmanagerHostPort},
 	}
 
 	for _, tt := range tests {
@@ -149,11 +153,11 @@ func TestNew_SchemeAndHostReachTheRequest(t *testing.T) {
 		wantScheme string
 		wantHost   string
 	}{
-		{name: "explicit http scheme", url: "http://alertmanager.default:9093", wantScheme: "http", wantHost: "alertmanager.default:9093"},
-		{name: "explicit https scheme", url: "https://alertmanager.default:9093", wantScheme: "https", wantHost: "alertmanager.default:9093"},
-		{name: "bare host:port defaults to http", url: "alertmanager.default:9093", wantScheme: "http", wantHost: "alertmanager.default:9093"},
-		{name: "bare ip:port defaults to http", url: "127.0.0.1:9093", wantScheme: "http", wantHost: "127.0.0.1:9093"},
-		{name: "uppercase scheme is recognized as already having one", url: "HTTPS://alertmanager.default:9093", wantScheme: "https", wantHost: "alertmanager.default:9093"},
+		{name: "explicit http scheme", url: "http://" + testAlertmanagerHostPort, wantScheme: httpScheme, wantHost: testAlertmanagerHostPort},
+		{name: "explicit https scheme", url: "https://" + testAlertmanagerHostPort, wantScheme: "https", wantHost: testAlertmanagerHostPort},
+		{name: "bare host:port defaults to http", url: testAlertmanagerHostPort, wantScheme: httpScheme, wantHost: testAlertmanagerHostPort},
+		{name: "bare ip:port defaults to http", url: "127.0.0.1:9093", wantScheme: httpScheme, wantHost: "127.0.0.1:9093"},
+		{name: "uppercase scheme is recognized as already having one", url: "HTTPS://" + testAlertmanagerHostPort, wantScheme: "https", wantHost: testAlertmanagerHostPort},
 	}
 
 	for _, tt := range tests {
@@ -223,7 +227,7 @@ func silencePayload(id, state string, startsAt, endsAt time.Time) map[string]any
 		"id":     id,
 		"status": map[string]any{"state": state},
 		"matchers": []map[string]any{
-			{"name": "alertname", "value": "TestAlert", "isEqual": true, "isRegex": false},
+			{"name": alertNameLabel, "value": testAlertName, "isEqual": true, "isRegex": false},
 		},
 		"comment":   "old",
 		"createdBy": "old-author",
@@ -442,7 +446,7 @@ func TestUpsertSilence_PostsAllMatchers(t *testing.T) {
 		Spec: v1alpha1.SilenceSpec{
 			Comment: "test silence",
 			Matchers: v1alpha1.Matchers{
-				{Name: "alertname", Value: "TestAlert", IsEqual: true, IsRegex: false},
+				{Name: alertNameLabel, Value: testAlertName, IsEqual: true, IsRegex: false},
 				{Name: "severity", Value: "crit.*", IsEqual: false, IsRegex: true},
 			},
 		},
@@ -453,7 +457,7 @@ func TestUpsertSilence_PostsAllMatchers(t *testing.T) {
 	}
 
 	want := []postedMatcher{
-		{Name: "alertname", Value: "TestAlert", IsEqual: true, IsRegex: false},
+		{Name: alertNameLabel, Value: testAlertName, IsEqual: true, IsRegex: false},
 		{Name: "severity", Value: "crit.*", IsEqual: false, IsRegex: true},
 	}
 

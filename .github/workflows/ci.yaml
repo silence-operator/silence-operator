@@ -12,6 +12,40 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  check-generated:
+    name: Check generated Bazel files are up to date
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Clone the code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Bazelisk
+        uses: bazelbuild/setup-bazelisk@b39c379c82683a5f25d34f0d062761f62693e0b2 # v3
+
+      - name: Cache Bazel repository cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/bazel-repo
+          key: bazel-repo-${{ runner.os }}-${{ hashFiles('MODULE.bazel', 'MODULE.bazel.lock', 'go.mod', 'go.sum') }}
+
+      - name: Cache Bazel disk cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/bazel-disk
+          key: bazel-disk-${{ runner.os }}-${{ github.job }}-${{ github.run_id }}
+          restore-keys: |
+            bazel-disk-${{ runner.os }}-${{ github.job }}-
+
+      # Catches drift between go.mod/go.sum, MODULE.bazel/BUILD.bazel files, and NOTICE.
+      - name: Check generated Bazel files are up to date
+        run: |
+          bazel mod tidy --config=ci
+          bazel run --config=ci //:gazelle
+          bazel run --config=ci //:notice
+          git diff --exit-code
+
   build:
     name: Build, test and lint (nogo) on Ubuntu
     runs-on: ubuntu-latest
@@ -38,17 +72,9 @@ jobs:
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cache/bazel-disk
-          key: bazel-disk-${{ runner.os }}-${{ github.run_id }}
+          key: bazel-disk-${{ runner.os }}-${{ github.job }}-${{ github.run_id }}
           restore-keys: |
-            bazel-disk-${{ runner.os }}-
-
-      # Catches drift between go.mod/go.sum, MODULE.bazel/BUILD.bazel files, and NOTICE.
-      - name: Check generated Bazel files are up to date
-        run: |
-          bazel mod tidy --config=ci
-          bazel run --config=ci //:gazelle
-          bazel run --config=ci //:notice
-          git diff --exit-code
+            bazel-disk-${{ runner.os }}-${{ github.job }}-
 
       - name: Build
         run: bazel build --config=ci //...
@@ -63,27 +89,15 @@ jobs:
         if: github.event_name == 'pull_request'
         run: bazel coverage --config=ci //...
 
-      # Everything below is informational: coverage reporting must never block a merge that otherwise passed build/test/lint.
+      # Everything below is informational
       - name: Extract PR coverage percentage
         if: github.event_name == 'pull_request'
         continue-on-error: true
         id: head
-        run: |
-          report="$(bazel info output_path)/_coverage/_coverage_report.dat"
-          if [ ! -s "$report" ]; then
-            echo "::error::$report is missing or empty; nothing to report" >&2
-            exit 1
-          fi
-          # $report is an LCOV tracefile: SF:<path> starts a per-file block ending in one "LF:<lines found>"/"LH:<lines hit>" pair; grouping those by the file's directory (and separately summing all of them as TOTAL) reproduces genhtml's own per-directory breakdown, without installing lcov.
-          awk -F: '
-            /^SF:/ { file=$0; sub(/^SF:/, "", file); n=split(file, parts, "/"); dir=(n>1) ? substr(file, 1, length(file)-length(parts[n])-1) : "." }
-            /^LF:/ { lf[dir]+=$2; lf["TOTAL"]+=$2 }
-            /^LH:/ { lh[dir]+=$2; lh["TOTAL"]+=$2 }
-            END { for (d in lf) printf "%s\t%d\t%d\n", d, lf[d], lh[d] }
-          ' "$report" | sort > head-coverage.tsv
-          pct=$(awk -F'\t' '$1=="TOTAL"{if ($2>0) printf "%.1f", $3*100/$2; else exit 1}' head-coverage.tsv)
-          echo "pct=$pct" >> "$GITHUB_OUTPUT"
-          echo "### Coverage: ${pct}%" >> "$GITHUB_STEP_SUMMARY"
+        uses: ./.github/actions/extract-coverage
+        with:
+          output-file: head-coverage.tsv
+          summary: 'true'
 
       - name: Check out PR base commit
         if: github.event_name == 'pull_request' && steps.head.outputs.pct != ''
@@ -97,25 +111,13 @@ jobs:
         run: |
           rm -f "$(bazel info output_path)/_coverage/_coverage_report.dat"
           bazel coverage --config=ci //...
-      # this llm-produced awk mess somewhat makes sense -- can be rewritten properly later
       - name: Extract base coverage percentage
         if: github.event_name == 'pull_request' && steps.base-compute.outcome == 'success'
         continue-on-error: true
         id: base
-        run: |
-          report="$(bazel info output_path)/_coverage/_coverage_report.dat"
-          if [ ! -s "$report" ]; then
-            echo "::error::$report is missing or empty; nothing to compare" >&2
-            exit 1
-          fi
-          awk -F: '
-            /^SF:/ { file=$0; sub(/^SF:/, "", file); n=split(file, parts, "/"); dir=(n>1) ? substr(file, 1, length(file)-length(parts[n])-1) : "." }
-            /^LF:/ { lf[dir]+=$2; lf["TOTAL"]+=$2 }
-            /^LH:/ { lh[dir]+=$2; lh["TOTAL"]+=$2 }
-            END { for (d in lf) printf "%s\t%d\t%d\n", d, lf[d], lh[d] }
-          ' "$report" | sort > base-coverage.tsv
-          pct=$(awk -F'\t' '$1=="TOTAL"{if ($2>0) printf "%.1f", $3*100/$2; else exit 1}' base-coverage.tsv)
-          echo "pct=$pct" >> "$GITHUB_OUTPUT"
+        uses: ./.github/actions/extract-coverage
+        with:
+          output-file: base-coverage.tsv
 
       # continue-on-error: fork PRs get a read-only GITHUB_TOKEN on pull_request, so the comment call 403s there instead of failing CI (not switching to pull_request_target, which would hand a write token to untrusted PR code).
       - name: Comment on PR with coverage delta
