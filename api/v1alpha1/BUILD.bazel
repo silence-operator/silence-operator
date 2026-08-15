@@ -38,6 +38,10 @@ license_check()
 
 go_test(
     name = "v1alpha1_test",
-    srcs = ["matcher_test.go"],
+    srcs = [
+        "groupversion_info_test.go",
+        "matcher_test.go",
+    ],
     embed = [":v1alpha1"],
+    deps = ["@io_k8s_apimachinery//pkg/runtime"],
 )
