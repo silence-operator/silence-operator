@@ -1,5 +1,11 @@
 # Development
 
+## Tidy
+
+`bazel run //:tidy` runs gazelle, every package's `addlicense_fix`, and lint together — the one
+command to reach for before committing. See `bazel/tidy.bzl`; the sections below cover what each
+step does individually and why it exists.
+
 ## BUILD.bazel files
 
 You Don't have to hand-edit `BUILD.bazel` files. After adding, removing, or moving Go files, regenerate them
@@ -47,3 +53,19 @@ You can run golangci-lint as bazel target that pins the same version CI uses:
 ```sh
 bazel run //:lint
 ```
+
+## envtest suite
+
+`internal/controller`'s Ginkgo suite (`suite_test.go`) needs real envtest binaries
+(`kube-apiserver`, `etcd`) to run. It self-skips via `Skip()` in `BeforeSuite` when it can't find
+them (`KUBEBUILDER_ASSETS` unset and no `make setup-envtest` output under `bin/k8s`), so
+`bazel test //...`/`bazel coverage --config=ci //...` pass without exercising it. To run it for
+real:
+
+```sh
+make setup-envtest
+make test
+```
+
+Plain `testing.T` reconciler tests (`reconcile_test.go`, no envtest needed) live alongside it in
+the same package and always run under `bazel test //...`.

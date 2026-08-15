@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/go-openapi/strfmt"
@@ -29,15 +30,22 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	monitoringv1alpha1 "github.com/silence-operator/silence-operator/api/v1alpha1"
-	"github.com/silence-operator/silence-operator/internal/alertmanager"
 )
+
+// AlertManagerClient is the subset of alertmanager.AlertManager's API the reconciler depends on;
+// depending on this instead of the concrete type lets tests substitute a fake.
+type AlertManagerClient interface {
+	GetSilence(id string) (*silence.GetSilenceOK, error)
+	UpsertSilence(ctx context.Context, s *monitoringv1alpha1.Silence, startsAt *strfmt.DateTime) (string, error)
+	DeleteSilence(id string) error
+}
 
 // SilenceReconciler reconciles a Silence object
 type SilenceReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
-	AlertManager *alertmanager.AlertManager
+	AlertManager AlertManagerClient
 	Interval     time.Duration
 
 	GetSilenceAttempts int
@@ -118,74 +126,103 @@ func (r *SilenceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, nil
 	}
 
-	var startsAt *strfmt.DateTime
+	state := r.fetchSilenceState(ctx, obj)
+
+	d := decideSilence(obj, state, r.Interval, time.Now())
+	if d.logMsg != "" {
+		log.Info(d.logMsg, "am_id", obj.Status.AlertManagerID)
+	}
+	if d.skip {
+		log.Info("no need for reconciliation")
+		reconciliationCompleted = false
+
+		return ctrl.Result{RequeueAfter: r.Interval}, nil
+	}
+
+	res, err := r.applyUpsert(ctx, obj, d.startsAt)
+	if err != nil {
+		reconciliationCompleted = false
+	}
+
+	return res, err
+}
+
+// fetchSilenceState resolves what alertmanager reports about obj's silence, retrying up to
+// GetSilenceAttempts times. nil means unknown: no silence yet, or a lookup that gave up.
+func (r *SilenceReconciler) fetchSilenceState(ctx context.Context, obj *monitoringv1alpha1.Silence) *models.GettableSilence {
+	log := ctrl.LoggerFrom(ctx)
 
 	if obj.Status.AlertManagerID == "" {
 		log.Info("silence is not created yet, creating")
-	} else {
-		// In case if there is a cluster of alertmanager instances, silence replication between them might be delayed.
-		// Try to get silences several times with interval
-		attempt := 1
-
-		var response *silence.GetSilenceOK
-		var err error
-
-		for {
-			if attempt > r.GetSilenceAttempts {
-				log.Info("unable to get alertmanager silence", "am_id", obj.Status.AlertManagerID, "err", err.Error())
-				obj.Status.AlertManagerID = ""
-
-				break
-			}
-
-			log.Info("getting silence", "attempt", attempt, "am_id", obj.Status.AlertManagerID)
-
-			response, err = r.AlertManager.GetSilence(obj.Status.AlertManagerID)
-			if err != nil {
-				attempt++
-				time.Sleep(r.GetSilenceInterval)
-
-				continue
-			}
-
-			break
-		}
-
-		if err == nil {
-			s := response.GetPayload()
-			startsAt = s.StartsAt
-
-			if *s.Status.State == models.SilenceStatusStateExpired {
-				log.Info("silence expired, updating expireAt", "am_id", obj.Status.AlertManagerID)
-			} else {
-				if obj.Generation != obj.Status.LastAppliedGeneration {
-					log.Info("updating alertmanager silence", "am_id", obj.Status.AlertManagerID)
-				} else {
-					// Extend silence if three or less reconciliations left
-					deadline := time.Now().Add(r.Interval * 3)
-
-					if deadline.Before(time.Time(*s.EndsAt)) {
-						log.Info("no need for reconciliation")
-						reconciliationCompleted = false
-
-						return ctrl.Result{RequeueAfter: r.Interval}, nil
-					}
-				}
-			}
-		}
+		return nil
 	}
+
+	lastErr := errors.New("no attempts configured to get alertmanager silence")
+	for attempt := 1; attempt <= r.GetSilenceAttempts; attempt++ {
+		log.Info("getting silence", "attempt", attempt, "am_id", obj.Status.AlertManagerID)
+
+		response, err := r.AlertManager.GetSilence(obj.Status.AlertManagerID)
+		if err == nil {
+			return response.GetPayload()
+		}
+		lastErr = err
+
+		time.Sleep(r.GetSilenceInterval)
+	}
+
+	// A lookup that never resolves is treated as "gone": reset the id so the caller creates one.
+	log.Info("unable to get alertmanager silence", "am_id", obj.Status.AlertManagerID, "err", lastErr.Error())
+	obj.Status.AlertManagerID = ""
+
+	return nil
+}
+
+// silenceDecision is what Reconcile should do about obj's silence; decideSilence computes it
+// from plain values, with no Kubernetes or AlertManager access.
+type silenceDecision struct {
+	skip     bool
+	startsAt *strfmt.DateTime
+	logMsg   string // non-empty: the caller logs this (with "am_id") before upserting
+}
+
+// decideSilence decides whether to skip reconciliation or upsert the silence for obj, given
+// what fetchSilenceState found (state == nil: no silence yet, or its lookup gave up).
+func decideSilence(obj *monitoringv1alpha1.Silence, state *models.GettableSilence, interval time.Duration, now time.Time) silenceDecision {
+	if state == nil {
+		return silenceDecision{}
+	}
+
+	if *state.Status.State == models.SilenceStatusStateExpired {
+		return silenceDecision{startsAt: state.StartsAt, logMsg: "silence expired, updating expireAt"}
+	}
+
+	if obj.Generation != obj.Status.LastAppliedGeneration {
+		return silenceDecision{startsAt: state.StartsAt, logMsg: "updating alertmanager silence"}
+	}
+
+	// Extend silence if three or less reconciliations left
+	deadline := now.Add(interval * 3)
+	if deadline.Before(time.Time(*state.EndsAt)) {
+		return silenceDecision{skip: true}
+	}
+
+	return silenceDecision{startsAt: state.StartsAt}
+}
+
+// applyUpsert creates or updates obj's silence with startsAt and persists the id to Status.
+// A failed status update deletes the silence it just wrote, keeping both systems in sync.
+func (r *SilenceReconciler) applyUpsert(ctx context.Context, obj *monitoringv1alpha1.Silence, startsAt *strfmt.DateTime) (ctrl.Result, error) {
+	log := ctrl.LoggerFrom(ctx)
 
 	id, err := r.AlertManager.UpsertSilence(ctx, obj, startsAt)
 	if err != nil {
-		reconciliationCompleted = false
-
 		log.Error(err, "unable to upsert silence", "am_id", obj.Status.AlertManagerID)
 
 		return ctrl.Result{RequeueAfter: r.Interval}, err
 	}
 
 	if obj.Status.AlertManagerID == id {
-		return ctrl.Result{RequeueAfter: r.Interval}, err
+		return ctrl.Result{RequeueAfter: r.Interval}, nil
 	}
 
 	log.Info("updating status of the silence object")
@@ -193,23 +230,18 @@ func (r *SilenceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	obj.Status.AlertManagerID = id
 	obj.Status.LastAppliedGeneration = obj.Generation
 
-	err = r.Status().Update(ctx, obj)
-	if err != nil {
-		reconciliationCompleted = false
-
+	if err := r.Status().Update(ctx, obj); err != nil {
 		log.Error(err, "unable to update status")
-
 		log.Info("cleaning up alertmanager silence")
 
-		err2 := r.AlertManager.DeleteSilence(id)
-		if err2 != nil {
+		if err2 := r.AlertManager.DeleteSilence(id); err2 != nil {
 			log.Error(err2, "unable to delete alertmanager silence")
 		}
 
 		return ctrl.Result{RequeueAfter: r.Interval}, err
 	}
 
-	return ctrl.Result{RequeueAfter: r.Interval}, err
+	return ctrl.Result{RequeueAfter: r.Interval}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

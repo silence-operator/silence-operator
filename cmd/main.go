@@ -71,22 +71,7 @@ func run(args []string) error {
 	}
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zapOpts)))
 
-	if !opts.enableHTTP2 {
-		setupLog.Info("disabling http/2")
-	}
-	tlsOpts := tlsutil.Options(opts.enableHTTP2)
-
-	webhookCertWatcher, err := tlsutil.Watcher(opts.webhookCertPath, opts.webhookCertName, opts.webhookCertKey)
-	if err != nil {
-		return fmt.Errorf("unable to initialize webhook certificate watcher: %w", err)
-	}
-	if webhookCertWatcher != nil {
-		setupLog.Info("Initializing webhook certificate watcher using provided certificates",
-			"webhook-cert-path", opts.webhookCertPath, "webhook-cert-name", opts.webhookCertName,
-			"webhook-cert-key", opts.webhookCertKey)
-	}
-	webhookServer := webhook.NewServer(webhook.Options{TLSOpts: tlsutil.WithCertificate(tlsOpts, webhookCertWatcher)})
-
+	// Pure validation first: fail before touching any OS resource (cert watchers open fsnotify watches).
 	alertManagerClient, err := alertmanager.New(&alertmanager.Config{
 		URL:             opts.alertManagerURL,
 		Author:          opts.silenceAuthor,
@@ -97,15 +82,21 @@ func run(args []string) error {
 		return fmt.Errorf("invalid alertmanager configuration: %w", err)
 	}
 
-	// Without a certificate, controller-runtime self-signs one for the metrics endpoint (fine for dev, not prod).
-	metricsCertWatcher, err := tlsutil.Watcher(opts.metricsCertPath, opts.metricsCertName, opts.metricsCertKey)
-	if err != nil {
-		return fmt.Errorf("unable to initialize metrics certificate watcher: %w", err)
+	if !opts.enableHTTP2 {
+		setupLog.Info("disabling http/2")
 	}
-	if metricsCertWatcher != nil {
-		setupLog.Info("Initializing metrics certificate watcher using provided certificates",
-			"metrics-cert-path", opts.metricsCertPath, "metrics-cert-name", opts.metricsCertName,
-			"metrics-cert-key", opts.metricsCertKey)
+	tlsOpts := tlsutil.Options(opts.enableHTTP2)
+
+	webhookCertWatcher, err := setupCertWatcher("webhook", opts.webhookCertPath, opts.webhookCertName, opts.webhookCertKey)
+	if err != nil {
+		return err
+	}
+	webhookServer := webhook.NewServer(webhook.Options{TLSOpts: tlsutil.WithCertificate(tlsOpts, webhookCertWatcher)})
+
+	// Without a certificate, controller-runtime self-signs one for the metrics endpoint (fine for dev, not prod).
+	metricsCertWatcher, err := setupCertWatcher("metrics", opts.metricsCertPath, opts.metricsCertName, opts.metricsCertKey)
+	if err != nil {
+		return err
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -137,18 +128,11 @@ func run(args []string) error {
 	}
 	// +kubebuilder:scaffold:builder
 
-	if metricsCertWatcher != nil {
-		setupLog.Info("Adding metrics certificate watcher to manager")
-		if err := mgr.Add(metricsCertWatcher); err != nil {
-			return fmt.Errorf("unable to add metrics certificate watcher to manager: %w", err)
-		}
+	if err := addCertWatcher(mgr, "metrics", metricsCertWatcher); err != nil {
+		return err
 	}
-
-	if webhookCertWatcher != nil {
-		setupLog.Info("Adding webhook certificate watcher to manager")
-		if err := mgr.Add(webhookCertWatcher); err != nil {
-			return fmt.Errorf("unable to add webhook certificate watcher to manager: %w", err)
-		}
+	if err := addCertWatcher(mgr, "webhook", webhookCertWatcher); err != nil {
+		return err
 	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {

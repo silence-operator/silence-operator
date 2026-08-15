@@ -24,7 +24,6 @@ go_library(
     visibility = ["//:__subpackages__"],
     deps = [
         "//api/v1alpha1",
-        "//internal/alertmanager",
         "@com_github_go_openapi_strfmt//:strfmt",
         "@com_github_prometheus_alertmanager//api/v2/client/silence",
         "@com_github_prometheus_alertmanager//api/v2/models",
@@ -38,22 +37,28 @@ go_library(
 go_test(
     name = "controller_test",
     srcs = [
+        "reconcile_test.go",
         "silence_controller_test.go",
         "suite_test.go",
     ],
     embed = [":controller"],
-    # Needs KUBEBUILDER_ASSETS (envtest); excluded from `bazel test //...`, run via `make test`.
-    tags = ["manual"],
     deps = [
         "//api/v1alpha1",
+        "@com_github_go_openapi_strfmt//:strfmt",
         "@com_github_onsi_ginkgo_v2//:ginkgo",
         "@com_github_onsi_gomega//:gomega",
+        "@com_github_prometheus_alertmanager//api/v2/client/silence",
+        "@com_github_prometheus_alertmanager//api/v2/models",
         "@io_k8s_apimachinery//pkg/api/errors",
         "@io_k8s_apimachinery//pkg/apis/meta/v1:meta",
+        "@io_k8s_apimachinery//pkg/runtime",
         "@io_k8s_apimachinery//pkg/types",
         "@io_k8s_client_go//kubernetes/scheme",
         "@io_k8s_client_go//rest",
         "@io_k8s_sigs_controller_runtime//pkg/client",
+        "@io_k8s_sigs_controller_runtime//pkg/client/fake",
+        "@io_k8s_sigs_controller_runtime//pkg/client/interceptor",
+        "@io_k8s_sigs_controller_runtime//pkg/controller/controllerutil",
         "@io_k8s_sigs_controller_runtime//pkg/envtest",
         "@io_k8s_sigs_controller_runtime//pkg/log",
         "@io_k8s_sigs_controller_runtime//pkg/log/zap",

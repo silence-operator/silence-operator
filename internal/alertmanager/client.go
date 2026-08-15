@@ -33,13 +33,6 @@ import (
 	"github.com/silence-operator/silence-operator/api/v1alpha1"
 )
 
-type AlertManagerInterface interface {
-	GetSilence(id string) (*silence.GetSilenceOK, error)
-	GetSilences(filter []string) (*silence.GetSilencesOK, error)
-	UpsertSilence(s *v1alpha1.Silence, startsAt *strfmt.DateTime) (string, error)
-	DeleteSilence(id string) error
-}
-
 type AlertManager struct {
 	Author          string
 	InstanceName    string

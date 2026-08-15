@@ -25,6 +25,7 @@ load("//bazel:kubeconform_toolchain.bzl", KUBECONFORM_VERSION = "VERSION")
 load("//bazel:kustomize_toolchain.bzl", KUSTOMIZE_VERSION = "VERSION")
 load("//bazel:lint.bzl", "golangci_lint")
 load("//bazel:notice.bzl", "notice")
+load("//bazel:tidy.bzl", "tidy")
 
 package(
     default_package_metadata = [":package_metadata"],
@@ -36,6 +37,9 @@ gazelle(name = "gazelle")
 # Not hermetic (needs the ambient Go module cache); see bazel/lint.bzl. CI's Lint job
 # (golangci-lint-action) is the actual gate -- this just runs the same pinned binary locally.
 golangci_lint(name = "lint")
+
+# Runs gazelle, every addlicense_fix, and lint together; see bazel/tidy.bzl.
+tidy(name = "tidy")
 
 package_metadata(
     name = "package_metadata",
