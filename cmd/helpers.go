@@ -34,10 +34,12 @@ func setupCertWatcher(component, certPath, certName, keyName string) (*certwatch
 	if err != nil {
 		return nil, fmt.Errorf("unable to initialize %s certificate watcher: %w", component, err)
 	}
+
 	if watcher != nil {
 		setupLog.Info(fmt.Sprintf("Initializing %s certificate watcher using provided certificates", component),
 			component+"-cert-path", certPath, component+"-cert-name", certName, component+"-cert-key", keyName)
 	}
+
 	return watcher, nil
 }
 
@@ -46,9 +48,13 @@ func addCertWatcher(adder runnableAdder, component string, watcher *certwatcher.
 	if watcher == nil {
 		return nil
 	}
+
 	setupLog.Info(fmt.Sprintf("Adding %s certificate watcher to manager", component))
-	if err := adder.Add(watcher); err != nil {
+
+	err := adder.Add(watcher)
+	if err != nil {
 		return fmt.Errorf("unable to add %s certificate watcher to manager: %w", component, err)
 	}
+
 	return nil
 }

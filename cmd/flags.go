@@ -92,8 +92,10 @@ func parseFlags(fs *flag.FlagSet, zapOpts *zap.Options, args []string) (*operato
 
 	zapOpts.BindFlags(fs)
 
-	if err := fs.Parse(args); err != nil {
+	err := fs.Parse(args)
+	if err != nil {
 		return nil, err
 	}
+
 	return o, nil
 }

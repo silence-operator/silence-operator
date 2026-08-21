@@ -47,6 +47,7 @@ func TestOptions(t *testing.T) {
 			for _, opt := range Options(tt.enableHTTP2) {
 				opt(cfg)
 			}
+
 			if !slices.Equal(cfg.NextProtos, tt.wantNextProtos) {
 				t.Fatalf("NextProtos = %v, want %v", cfg.NextProtos, tt.wantNextProtos)
 			}
@@ -70,6 +71,7 @@ func TestWatcher(t *testing.T) {
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("err = %v, wantErr %v", err, tt.wantErr)
 			}
+
 			if tt.wantNil && w != nil {
 				t.Fatalf("Watcher() = %v, want nil", w)
 			}
@@ -95,6 +97,7 @@ func TestWithCertificate(t *testing.T) {
 			if len(got) != len(base)+tt.wantLenDiff {
 				t.Fatalf("len(got) = %d, want %d", len(got), len(base)+tt.wantLenDiff)
 			}
+
 			if len(base) != 1 {
 				t.Fatalf("base was mutated: len = %d, want 1", len(base))
 			}
@@ -102,6 +105,7 @@ func TestWithCertificate(t *testing.T) {
 			if tt.wantCert {
 				cfg := &tls.Config{}
 				got[len(got)-1](cfg)
+
 				if cfg.GetCertificate == nil {
 					t.Fatal("GetCertificate was not set")
 				}
@@ -120,6 +124,7 @@ func newTestWatcher(t *testing.T) *certwatcher.CertWatcher {
 	if err != nil {
 		t.Fatalf("Watcher() error = %v", err)
 	}
+
 	return w
 }
 
@@ -138,13 +143,16 @@ func writeSelfSignedCert(t *testing.T, dir, certFile, keyFile string) {
 		NotAfter:     time.Now().Add(time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature,
 	}
+
 	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
 	if err != nil {
 		t.Fatalf("CreateCertificate() error = %v", err)
 	}
 
 	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
-	if err := os.WriteFile(filepath.Join(dir, certFile), certPEM, 0o600); err != nil {
+
+	err = os.WriteFile(filepath.Join(dir, certFile), certPEM, 0o600)
+	if err != nil {
 		t.Fatalf("write cert: %v", err)
 	}
 
@@ -152,8 +160,11 @@ func writeSelfSignedCert(t *testing.T, dir, certFile, keyFile string) {
 	if err != nil {
 		t.Fatalf("MarshalECPrivateKey() error = %v", err)
 	}
+
 	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
-	if err := os.WriteFile(filepath.Join(dir, keyFile), keyPEM, 0o600); err != nil {
+
+	err = os.WriteFile(filepath.Join(dir, keyFile), keyPEM, 0o600)
+	if err != nil {
 		t.Fatalf("write key: %v", err)
 	}
 }

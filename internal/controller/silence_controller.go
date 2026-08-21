@@ -73,7 +73,9 @@ func (r *SilenceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}()
 
 	obj := &monitoringv1alpha1.Silence{}
-	if err := r.Get(ctx, req.NamespacedName, obj); err != nil {
+
+	err := r.Get(ctx, req.NamespacedName, obj)
+	if err != nil {
 		reconciliationCompleted = false
 
 		return ctrl.Result{}, client.IgnoreNotFound(err)
@@ -87,6 +89,7 @@ func (r *SilenceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			err := r.AlertManager.DeleteSilence(obj.Status.AlertManagerID)
 			if err != nil {
 				reconciliationCompleted = false
+
 				log.Error(err, "unable to delete silence in alertmanager", "am_id", obj.Status.AlertManagerID)
 			}
 		}
@@ -132,8 +135,10 @@ func (r *SilenceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if d.logMsg != "" {
 		log.Info(d.logMsg, "am_id", obj.Status.AlertManagerID)
 	}
+
 	if d.skip {
 		log.Info("no need for reconciliation")
+
 		reconciliationCompleted = false
 
 		return ctrl.Result{RequeueAfter: r.Interval}, nil
@@ -158,6 +163,7 @@ func (r *SilenceReconciler) fetchSilenceState(ctx context.Context, obj *monitori
 	}
 
 	lastErr := errors.New("no attempts configured to get alertmanager silence")
+
 	for attempt := 1; attempt <= r.GetSilenceAttempts; attempt++ {
 		log.Info("getting silence", "attempt", attempt, "am_id", obj.Status.AlertManagerID)
 
@@ -165,6 +171,7 @@ func (r *SilenceReconciler) fetchSilenceState(ctx context.Context, obj *monitori
 		if err == nil {
 			return response.GetPayload()
 		}
+
 		lastErr = err
 
 		time.Sleep(r.GetSilenceInterval)
@@ -230,11 +237,13 @@ func (r *SilenceReconciler) applyUpsert(ctx context.Context, obj *monitoringv1al
 	obj.Status.AlertManagerID = id
 	obj.Status.LastAppliedGeneration = obj.Generation
 
-	if err := r.Status().Update(ctx, obj); err != nil {
+	err = r.Status().Update(ctx, obj)
+	if err != nil {
 		log.Error(err, "unable to update status")
 		log.Info("cleaning up alertmanager silence")
 
-		if err2 := r.AlertManager.DeleteSilence(id); err2 != nil {
+		err2 := r.AlertManager.DeleteSilence(id)
+		if err2 != nil {
 			log.Error(err2, "unable to delete alertmanager silence")
 		}
 

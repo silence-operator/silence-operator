@@ -2,8 +2,6 @@ name: Bazel
 
 on:
   push:
-    branches:
-      - master
   pull_request:
 
 # Coverage-comment reruns on every push to a PR; cancel the superseded run rather than race it for the comment.

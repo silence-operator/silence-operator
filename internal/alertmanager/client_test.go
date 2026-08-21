@@ -92,6 +92,7 @@ func captureRequest(t *testing.T, mgr *AlertManager) *http.Request {
 	}
 
 	var captured *http.Request
+
 	rt.Transport = roundTripFunc(func(req *http.Request) (*http.Response, error) {
 		captured = req
 		return nil, errRoundTripStubbed
@@ -141,7 +142,8 @@ func TestNew_ResolvesBareHostPort(t *testing.T) {
 
 	mgr := newTestAlertManager(t, bareHostPort)
 
-	if _, err := mgr.GetSilences(nil); err != nil {
+	_, err := mgr.GetSilences(nil)
+	if err != nil {
 		t.Fatalf("GetSilences() error = %v, want nil", err)
 	}
 }
@@ -207,7 +209,9 @@ func (c *silencesServerCapture) postedSilence(t *testing.T) postedSilenceBody {
 	t.Helper()
 
 	var body postedSilenceBody
-	if err := json.Unmarshal(c.postedBody, &body); err != nil {
+
+	err := json.Unmarshal(c.postedBody, &body)
+	if err != nil {
 		t.Fatalf("failed to decode posted silence: %v", err)
 	}
 
@@ -263,6 +267,7 @@ func newSilencesServerHandler(t *testing.T, getPayload []map[string]any, postSil
 		case r.Method == http.MethodGet && r.URL.Path == silencesPath:
 			capture.getCalled = true
 			capture.getFilter = r.URL.Query()["filter"]
+
 			writeJSON(t, w, getPayload)
 		case r.Method == http.MethodPost && r.URL.Path == silencesPath:
 			if postFails {
@@ -332,7 +337,8 @@ func TestUpsertSilence_ThreadsExplicitStartsAt(t *testing.T) {
 	before := time.Now()
 	explicitStartsAt := strfmt.DateTime(before.Add(-time.Hour))
 
-	if _, err := mgr.UpsertSilence(context.Background(), newTestSilence("known-id"), &explicitStartsAt); err != nil {
+	_, err := mgr.UpsertSilence(context.Background(), newTestSilence("known-id"), &explicitStartsAt)
+	if err != nil {
 		t.Fatalf("UpsertSilence() error = %v", err)
 	}
 
@@ -354,7 +360,8 @@ func TestUpsertSilence_FiltersExistingByMatcherString(t *testing.T) {
 
 	mgr := newTestAlertManager(t, server.URL)
 
-	if _, err := mgr.UpsertSilence(context.Background(), newTestSilence(""), nil); err != nil {
+	_, err := mgr.UpsertSilence(context.Background(), newTestSilence(""), nil)
+	if err != nil {
 		t.Fatalf("UpsertSilence() error = %v", err)
 	}
 
@@ -454,7 +461,8 @@ func TestUpsertSilence_PostsAllMatchers(t *testing.T) {
 		},
 	}
 
-	if _, err := mgr.UpsertSilence(context.Background(), s, nil); err != nil {
+	_, err := mgr.UpsertSilence(context.Background(), s, nil)
+	if err != nil {
 		t.Fatalf("UpsertSilence() error = %v", err)
 	}
 
@@ -472,7 +480,8 @@ func TestUpsertSilence_PostsAllMatchers(t *testing.T) {
 func TestUpsertSilence_ReturnsErrorWhenLookupFails(t *testing.T) {
 	mgr := newTestAlertManager(t, errServer(t).URL)
 
-	if _, err := mgr.UpsertSilence(context.Background(), newTestSilence(""), nil); err == nil {
+	_, err := mgr.UpsertSilence(context.Background(), newTestSilence(""), nil)
+	if err == nil {
 		t.Fatal("UpsertSilence() error = nil, want error when the existing-silence lookup fails")
 	}
 }
@@ -482,7 +491,8 @@ func TestUpsertSilence_ReturnsErrorWhenPostFails(t *testing.T) {
 
 	mgr := newTestAlertManager(t, server.URL)
 
-	if _, err := mgr.UpsertSilence(context.Background(), newTestSilence(""), nil); err == nil {
+	_, err := mgr.UpsertSilence(context.Background(), newTestSilence(""), nil)
+	if err == nil {
 		t.Fatal("UpsertSilence() error = nil, want error when PostSilences fails")
 	}
 }
@@ -535,7 +545,8 @@ func TestGetSilenceAndDeleteSilence_CallSilenceByIDPath(t *testing.T) {
 			name:       "DeleteSilence",
 			wantMethod: http.MethodDelete,
 			call: func(t *testing.T, mgr *AlertManager) {
-				if err := mgr.DeleteSilence("some-id"); err != nil {
+				err := mgr.DeleteSilence("some-id")
+				if err != nil {
 					t.Fatalf("DeleteSilence() error = %v", err)
 				}
 			},
@@ -549,6 +560,7 @@ func TestGetSilenceAndDeleteSilence_CallSilenceByIDPath(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotMethod = r.Method
 				gotPath = r.URL.Path
+
 				writeJSON(t, w, activeSilence("some-id"))
 			}))
 			t.Cleanup(server.Close)
@@ -575,7 +587,8 @@ func TestGetSilences_PassesFilter(t *testing.T) {
 
 	filter := []string{"alertname=TestAlert"}
 
-	if _, err := am.GetSilences(filter); err != nil {
+	_, err := am.GetSilences(filter)
+	if err != nil {
 		t.Fatalf("GetSilences() error = %v", err)
 	}
 
@@ -627,7 +640,8 @@ func TestAlertManager_ReturnsErrorOnServerFailure(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			mgr := newTestAlertManager(t, errServer(t).URL)
 
-			if err := tt.call(mgr); err == nil {
+			err := tt.call(mgr)
+			if err == nil {
 				t.Fatalf("%s() error = nil, want error on server failure", tt.name)
 			}
 		})
@@ -639,7 +653,8 @@ func writeJSON(t *testing.T, w http.ResponseWriter, v any) {
 
 	w.Header().Set("Content-Type", "application/json")
 
-	if err := json.NewEncoder(w).Encode(v); err != nil {
+	err := json.NewEncoder(w).Encode(v)
+	if err != nil {
 		t.Errorf("failed to write json response: %v", err)
 	}
 }

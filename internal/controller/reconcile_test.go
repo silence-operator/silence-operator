@@ -59,6 +59,7 @@ func newSilence(name string, mutate func(*monitoringv1alpha1.Silence)) *monitori
 	if mutate != nil {
 		mutate(s)
 	}
+
 	return s
 }
 
@@ -74,7 +75,9 @@ func newFakeClient(t *testing.T, opts ...func(*fake.ClientBuilder)) client.Clien
 	t.Helper()
 
 	scheme := runtime.NewScheme()
-	if err := monitoringv1alpha1.AddToScheme(scheme); err != nil {
+
+	err := monitoringv1alpha1.AddToScheme(scheme)
+	if err != nil {
 		t.Fatalf("AddToScheme() error = %v", err)
 	}
 
@@ -99,9 +102,12 @@ func getSilence(t *testing.T, c client.Client, name string) *monitoringv1alpha1.
 	t.Helper()
 
 	got := &monitoringv1alpha1.Silence{}
-	if err := c.Get(context.Background(), types.NamespacedName{Name: name}, got); err != nil {
+
+	err := c.Get(context.Background(), types.NamespacedName{Name: name}, got)
+	if err != nil {
 		t.Fatalf("Get() error = %v", err)
 	}
+
 	return got
 }
 
@@ -132,6 +138,7 @@ func (f *fakeAlertManager) GetSilence(id string) (*silence.GetSilenceOK, error) 
 	if f.getSilenceFunc == nil {
 		f.t.Fatalf("unexpected GetSilence(%q)", id)
 	}
+
 	return f.getSilenceFunc(id)
 }
 
@@ -140,6 +147,7 @@ func (f *fakeAlertManager) UpsertSilence(ctx context.Context, s *monitoringv1alp
 	if f.upsertSilenceFunc == nil {
 		f.t.Fatal("unexpected UpsertSilence call")
 	}
+
 	return f.upsertSilenceFunc(ctx, s, startsAt)
 }
 
@@ -148,12 +156,14 @@ func (f *fakeAlertManager) DeleteSilence(id string) error {
 	if f.deleteSilenceFunc == nil {
 		f.t.Fatalf("unexpected DeleteSilence(%q)", id)
 	}
+
 	return f.deleteSilenceFunc(id)
 }
 
 // gettableSilence builds the payload GetSilence returns.
 func gettableSilence(state string, startsAt, endsAt time.Time) *models.GettableSilence {
 	sa, ea := strfmt.DateTime(startsAt), strfmt.DateTime(endsAt)
+
 	return &models.GettableSilence{
 		Status:  &models.SilenceStatus{State: &state},
 		Silence: models.Silence{StartsAt: &sa, EndsAt: &ea},
@@ -260,9 +270,11 @@ func TestFetchSilenceState(t *testing.T) {
 		if got := r.fetchSilenceState(context.Background(), obj); got != nil {
 			t.Errorf("fetchSilenceState() = %v, want nil", got)
 		}
+
 		if am.calls["GetSilence"] != 2 {
 			t.Errorf("GetSilence called %d times, want 2", am.calls["GetSilence"])
 		}
+
 		if obj.Status.AlertManagerID != "" {
 			t.Errorf("AlertManagerID = %q, want reset to empty", obj.Status.AlertManagerID)
 		}
@@ -278,6 +290,7 @@ func TestFetchSilenceState(t *testing.T) {
 		if got := r.fetchSilenceState(context.Background(), obj); got != nil {
 			t.Errorf("fetchSilenceState() = %v, want nil", got)
 		}
+
 		if obj.Status.AlertManagerID != "" {
 			t.Error("AlertManagerID was not reset")
 		}
@@ -291,6 +304,7 @@ func TestReconcile_MissingObjectIsIgnored(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Reconcile() error = %v", err)
 	}
+
 	if res != (reconcile.Result{}) {
 		t.Errorf("Reconcile() result = %v, want zero value", res)
 	}
@@ -305,9 +319,11 @@ func TestReconcile_AddsFinalizerWithoutTouchingAlertManager(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Reconcile() error = %v", err)
 	}
+
 	if res.RequeueAfter != reconcileInterval {
 		t.Errorf("RequeueAfter = %v, want %v", res.RequeueAfter, reconcileInterval)
 	}
+
 	if got := getSilence(t, c, obj.Name); !controllerutil.ContainsFinalizer(got, monitoringv1alpha1.SilenceFinalizer) {
 		t.Error("finalizer was not added")
 	}
@@ -325,6 +341,7 @@ func TestReconcile_SuspendedSkipsAlertManager(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Reconcile() error = %v", err)
 	}
+
 	if res != (reconcile.Result{}) {
 		t.Errorf("Reconcile() result = %v, want zero value", res)
 	}
@@ -344,6 +361,7 @@ func TestReconcile_CreatesNewSilenceAndUpdatesStatus(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Reconcile() error = %v", err)
 	}
+
 	if res.RequeueAfter != reconcileInterval {
 		t.Errorf("RequeueAfter = %v, want %v", res.RequeueAfter, reconcileInterval)
 	}
@@ -352,6 +370,7 @@ func TestReconcile_CreatesNewSilenceAndUpdatesStatus(t *testing.T) {
 	if got.Status.AlertManagerID != "new-id" {
 		t.Errorf("Status.AlertManagerID = %q, want %q", got.Status.AlertManagerID, "new-id")
 	}
+
 	if got.Status.LastAppliedGeneration != got.Generation {
 		t.Errorf("LastAppliedGeneration = %d, want %d (=Generation)", got.Status.LastAppliedGeneration, got.Generation)
 	}
@@ -378,6 +397,7 @@ func TestReconcile_ExtendsSilenceWhoseGenerationChanged(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Reconcile() error = %v", err)
 	}
+
 	if res.RequeueAfter != reconcileInterval {
 		t.Errorf("RequeueAfter = %v, want %v", res.RequeueAfter, reconcileInterval)
 	}
@@ -389,8 +409,11 @@ func TestReconcile_DeletionRemovesAlertManagerSilenceAndFinalizer(t *testing.T) 
 		s.Status.AlertManagerID = "to-delete-id"
 	})
 	c := newFakeClient(t, withObjects(obj))
+
 	ctx := context.Background()
-	if err := c.Delete(ctx, obj); err != nil {
+
+	err := c.Delete(ctx, obj)
+	if err != nil {
 		t.Fatalf("Delete() error = %v", err)
 	}
 
@@ -402,13 +425,17 @@ func TestReconcile_DeletionRemovesAlertManagerSilenceAndFinalizer(t *testing.T) 
 	if err != nil {
 		t.Fatalf("Reconcile() error = %v", err)
 	}
+
 	if res != (reconcile.Result{}) {
 		t.Errorf("Reconcile() result = %v, want zero value", res)
 	}
+
 	if am.calls["DeleteSilence:to-delete-id"] == 0 {
 		t.Error("DeleteSilence was not called")
 	}
-	if err := c.Get(ctx, types.NamespacedName{Name: obj.Name}, &monitoringv1alpha1.Silence{}); !apierrors.IsNotFound(err) {
+
+	err = c.Get(ctx, types.NamespacedName{Name: obj.Name}, &monitoringv1alpha1.Silence{})
+	if !apierrors.IsNotFound(err) {
 		t.Errorf("Get() after finalizer removal error = %v, want NotFound", err)
 	}
 }
@@ -428,9 +455,11 @@ func TestReconcile_CleansUpAlertManagerSilenceWhenStatusUpdateFails(t *testing.T
 	am.deleteSilenceFunc = func(string) error { return nil }
 	r := &SilenceReconciler{Client: c, AlertManager: am, Interval: reconcileInterval}
 
-	if _, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: obj.Name}}); err == nil {
+	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: obj.Name}})
+	if err == nil {
 		t.Fatal("Reconcile() error = nil, want the status update error")
 	}
+
 	if am.calls["DeleteSilence:orphan-id"] == 0 {
 		t.Error("the orphaned alertmanager silence was not cleaned up")
 	}

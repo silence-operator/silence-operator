@@ -64,6 +64,7 @@ func TestSetupCertWatcher(t *testing.T) {
 			path: func(t *testing.T) string {
 				dir := t.TempDir()
 				writeSelfSignedCert(t, dir, "tls.crt", "tls.key")
+
 				return dir
 			},
 		},
@@ -76,11 +77,14 @@ func TestSetupCertWatcher(t *testing.T) {
 				if err == nil || !strings.Contains(err.Error(), tt.wantErrMatch) {
 					t.Fatalf("error = %v, want it to mention %q", err, tt.wantErrMatch)
 				}
+
 				return
 			}
+
 			if err != nil {
 				t.Fatalf("setupCertWatcher() error = %v", err)
 			}
+
 			if got := w != nil; got == tt.wantNil {
 				t.Fatalf("setupCertWatcher() watcher = %v, want nil = %v", w, tt.wantNil)
 			}
@@ -147,6 +151,7 @@ func newTestCertWatcher(t *testing.T) *certwatcher.CertWatcher {
 	if err != nil {
 		t.Fatalf("setupCertWatcher() error = %v", err)
 	}
+
 	return w
 }
 
@@ -177,13 +182,16 @@ func writeSelfSignedCert(t *testing.T, dir, certFile, keyFile string) {
 		NotAfter:     time.Now().Add(time.Hour),
 		KeyUsage:     x509.KeyUsageDigitalSignature,
 	}
+
 	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
 	if err != nil {
 		t.Fatalf("CreateCertificate() error = %v", err)
 	}
 
 	certPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: der})
-	if err := os.WriteFile(filepath.Join(dir, certFile), certPEM, 0o600); err != nil {
+
+	err = os.WriteFile(filepath.Join(dir, certFile), certPEM, 0o600)
+	if err != nil {
 		t.Fatalf("write cert: %v", err)
 	}
 
@@ -191,8 +199,11 @@ func writeSelfSignedCert(t *testing.T, dir, certFile, keyFile string) {
 	if err != nil {
 		t.Fatalf("MarshalECPrivateKey() error = %v", err)
 	}
+
 	keyPEM := pem.EncodeToMemory(&pem.Block{Type: "EC PRIVATE KEY", Bytes: keyDER})
-	if err := os.WriteFile(filepath.Join(dir, keyFile), keyPEM, 0o600); err != nil {
+
+	err = os.WriteFile(filepath.Join(dir, keyFile), keyPEM, 0o600)
+	if err != nil {
 		t.Fatalf("write key: %v", err)
 	}
 }

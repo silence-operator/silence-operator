@@ -29,6 +29,7 @@ func Options(enableHTTP2 bool) []func(*tls.Config) {
 	if enableHTTP2 {
 		return nil
 	}
+
 	return []func(*tls.Config){func(c *tls.Config) {
 		c.NextProtos = []string{"http/1.1"}
 	}}
@@ -40,8 +41,10 @@ func WithCertificate(tlsOpts []func(*tls.Config), watcher *certwatcher.CertWatch
 	if watcher == nil {
 		return tlsOpts
 	}
+
 	out := make([]func(*tls.Config), len(tlsOpts), len(tlsOpts)+1)
 	copy(out, tlsOpts)
+
 	return append(out, func(c *tls.Config) {
 		c.GetCertificate = watcher.GetCertificate
 	})
@@ -53,5 +56,6 @@ func Watcher(path, certName, keyName string) (*certwatcher.CertWatcher, error) {
 	if path == "" {
 		return nil, nil
 	}
+
 	return certwatcher.New(filepath.Join(path, certName), filepath.Join(path, keyName))
 }

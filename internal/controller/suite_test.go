@@ -59,12 +59,14 @@ var _ = BeforeSuite(func() {
 	ctx, cancel = context.WithCancel(context.TODO())
 
 	var err error
+
 	err = monitoringv1alpha1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	// +kubebuilder:scaffold:scheme
 
 	By("bootstrapping test environment")
+
 	if os.Getenv("KUBEBUILDER_ASSETS") == "" && getFirstFoundEnvTestBinaryDir() == "" {
 		Skip("envtest binaries not found; set KUBEBUILDER_ASSETS or run `make setup-envtest`")
 	}
@@ -96,6 +98,7 @@ var _ = AfterSuite(func() {
 
 	By("tearing down the test environment")
 	cancel()
+
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
 })
@@ -110,15 +113,18 @@ var _ = AfterSuite(func() {
 // properly set up, run 'make setup-envtest' beforehand.
 func getFirstFoundEnvTestBinaryDir() string {
 	basePath := filepath.Join("..", "..", "bin", "k8s")
+
 	entries, err := os.ReadDir(basePath)
 	if err != nil {
 		logf.Log.Error(err, "Failed to read directory", "path", basePath)
 		return ""
 	}
+
 	for _, entry := range entries {
 		if entry.IsDir() {
 			return filepath.Join(basePath, entry.Name())
 		}
 	}
+
 	return ""
 }

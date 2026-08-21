@@ -36,5 +36,6 @@ func MetricsOptions(addr string, secure bool, tlsOpts []func(*tls.Config), watch
 	if secure {
 		o.FilterProvider = filters.WithAuthenticationAndAuthorization
 	}
+
 	return o
 }

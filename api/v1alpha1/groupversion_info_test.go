@@ -23,7 +23,8 @@ import (
 func TestAddToScheme(t *testing.T) {
 	scheme := runtime.NewScheme()
 
-	if err := AddToScheme(scheme); err != nil {
+	err := AddToScheme(scheme)
+	if err != nil {
 		t.Fatalf("AddToScheme() returned error: %v", err)
 	}
 
@@ -39,6 +40,7 @@ func TestGroupVersion(t *testing.T) {
 	if GroupVersion.Group != "monitoring.coreos.com" {
 		t.Errorf("GroupVersion.Group = %q, want %q", GroupVersion.Group, "monitoring.coreos.com")
 	}
+
 	if GroupVersion.Version != "v1alpha1" {
 		t.Errorf("GroupVersion.Version = %q, want %q", GroupVersion.Version, "v1alpha1")
 	}

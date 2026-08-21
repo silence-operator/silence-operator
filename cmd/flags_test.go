@@ -84,9 +84,11 @@ func TestParseFlagsBindsZapFlags(t *testing.T) {
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	zapOpts := zap.Options{}
 
-	if _, err := parseFlags(fs, &zapOpts, []string{"-zap-devel"}); err != nil {
+	_, err := parseFlags(fs, &zapOpts, []string{"-zap-devel"})
+	if err != nil {
 		t.Fatalf("parseFlags() error = %v", err)
 	}
+
 	if !zapOpts.Development {
 		t.Error("Development = false, want true after -zap-devel")
 	}
@@ -96,7 +98,8 @@ func TestParseFlagsInvalid(t *testing.T) {
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	zapOpts := zap.Options{}
 
-	if _, err := parseFlags(fs, &zapOpts, []string{"-concurrency", "not-a-number"}); err == nil {
+	_, err := parseFlags(fs, &zapOpts, []string{"-concurrency", "not-a-number"})
+	if err == nil {
 		t.Fatal("expected an error for an invalid -concurrency value")
 	}
 }

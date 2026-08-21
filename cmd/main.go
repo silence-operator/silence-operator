@@ -56,7 +56,8 @@ func init() {
 }
 
 func main() {
-	if err := run(os.Args[1:]); err != nil {
+	err := run(os.Args[1:])
+	if err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
@@ -65,10 +66,12 @@ func main() {
 // run parses flags, wires up the manager and controller, and blocks until the manager stops.
 func run(args []string) error {
 	zapOpts := zap.Options{Development: false}
+
 	opts, err := parseFlags(flag.CommandLine, &zapOpts, args)
 	if err != nil {
 		return err
 	}
+
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zapOpts)))
 
 	// Pure validation first: fail before touching any OS resource (cert watchers open fsnotify watches).
@@ -85,12 +88,14 @@ func run(args []string) error {
 	if !opts.enableHTTP2 {
 		setupLog.Info("disabling http/2")
 	}
+
 	tlsOpts := tlsutil.Options(opts.enableHTTP2)
 
 	webhookCertWatcher, err := setupCertWatcher("webhook", opts.webhookCertPath, opts.webhookCertName, opts.webhookCertKey)
 	if err != nil {
 		return err
 	}
+
 	webhookServer := webhook.NewServer(webhook.Options{TLSOpts: tlsutil.WithCertificate(tlsOpts, webhookCertWatcher)})
 
 	// Without a certificate, controller-runtime self-signs one for the metrics endpoint (fine for dev, not prod).
@@ -116,32 +121,40 @@ func run(args []string) error {
 		return fmt.Errorf("unable to start manager: %w", err)
 	}
 
-	if err := (&controller.SilenceReconciler{
+	err = (&controller.SilenceReconciler{
 		Client:             mgr.GetClient(),
 		Scheme:             mgr.GetScheme(),
 		AlertManager:       alertManagerClient,
 		Interval:           opts.interval,
 		GetSilenceAttempts: opts.getSilenceAttempts,
 		GetSilenceInterval: opts.getSilenceInterval,
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(mgr)
+	if err != nil {
 		return fmt.Errorf("unable to create Silence controller: %w", err)
 	}
 	// +kubebuilder:scaffold:builder
 
-	if err := addCertWatcher(mgr, "metrics", metricsCertWatcher); err != nil {
-		return err
-	}
-	if err := addCertWatcher(mgr, "webhook", webhookCertWatcher); err != nil {
+	err = addCertWatcher(mgr, "metrics", metricsCertWatcher)
+	if err != nil {
 		return err
 	}
 
-	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+	err = addCertWatcher(mgr, "webhook", webhookCertWatcher)
+	if err != nil {
+		return err
+	}
+
+	err = mgr.AddHealthzCheck("healthz", healthz.Ping)
+	if err != nil {
 		return fmt.Errorf("unable to set up health check: %w", err)
 	}
-	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+
+	err = mgr.AddReadyzCheck("readyz", healthz.Ping)
+	if err != nil {
 		return fmt.Errorf("unable to set up ready check: %w", err)
 	}
 
 	setupLog.Info("starting manager")
+
 	return mgr.Start(ctrl.SetupSignalHandler())
 }
