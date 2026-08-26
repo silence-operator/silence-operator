@@ -39,9 +39,9 @@ const extendSilenceThresholdReconciles = 3
 // AlertManagerClient is the subset of alertmanager.AlertManager's API the reconciler depends on;
 // depending on this instead of the concrete type lets tests substitute a fake.
 type AlertManagerClient interface {
-	GetSilence(id string) (*silence.GetSilenceOK, error)
+	GetSilence(ctx context.Context, id string) (*silence.GetSilenceOK, error)
 	UpsertSilence(ctx context.Context, s *monitoringv1alpha1.Silence, startsAt *strfmt.DateTime) (string, error)
-	DeleteSilence(id string) error
+	DeleteSilence(ctx context.Context, id string) error
 }
 
 // SilenceReconciler reconciles a Silence object
@@ -90,7 +90,7 @@ func (r *SilenceReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		if obj.Status.AlertManagerID != "" {
 			log.Info("deleting alertmanager silence", "am_id", obj.Status.AlertManagerID)
 
-			err := r.AlertManager.DeleteSilence(obj.Status.AlertManagerID)
+			err := r.AlertManager.DeleteSilence(ctx, obj.Status.AlertManagerID)
 			if err != nil {
 				reconciliationCompleted = false
 
@@ -171,7 +171,7 @@ func (r *SilenceReconciler) fetchSilenceState(ctx context.Context, obj *monitori
 	for attempt := 1; attempt <= r.GetSilenceAttempts; attempt++ {
 		log.Info("getting silence", "attempt", attempt, "am_id", obj.Status.AlertManagerID)
 
-		response, err := r.AlertManager.GetSilence(obj.Status.AlertManagerID)
+		response, err := r.AlertManager.GetSilence(ctx, obj.Status.AlertManagerID)
 		if err == nil {
 			return response.GetPayload()
 		}
@@ -246,7 +246,9 @@ func (r *SilenceReconciler) applyUpsert(ctx context.Context, obj *monitoringv1al
 		log.Error(err, "unable to update status")
 		log.Info("cleaning up alertmanager silence")
 
-		err2 := r.AlertManager.DeleteSilence(id)
+		// A canceled ctx must not block this compensating delete: it would otherwise leak
+		// id in alertmanager whenever the status update fails because ctx itself is done.
+		err2 := r.AlertManager.DeleteSilence(context.WithoutCancel(ctx), id)
 		if err2 != nil {
 			log.Error(err2, "unable to delete alertmanager silence")
 		}

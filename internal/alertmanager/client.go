@@ -73,7 +73,7 @@ func (c *AlertManager) UpsertSilence(ctx context.Context, s *v1alpha1.Silence, s
 
 		filter := s.Spec.Matchers.String()
 
-		result, err := c.GetSilences(filter)
+		result, err := c.GetSilences(ctx, filter)
 		if err != nil {
 			return "", err
 		}
@@ -121,7 +121,7 @@ func (c *AlertManager) UpsertSilence(ctx context.Context, s *v1alpha1.Silence, s
 	endsAt := strfmt.DateTime(now.Add(c.SilenceDuration))
 	comment := fmt.Sprintf("%s\nInstance: %s", s.Spec.Comment, c.InstanceName)
 
-	result, err := c.am.Silence.PostSilences(&silence.PostSilencesParams{
+	result, err := c.am.Silence.PostSilences((&silence.PostSilencesParams{
 		Silence: &models.PostableSilence{
 			ID: s.Status.AlertManagerID,
 			Silence: models.Silence{
@@ -132,7 +132,7 @@ func (c *AlertManager) UpsertSilence(ctx context.Context, s *v1alpha1.Silence, s
 				Matchers:  matchers,
 			},
 		},
-	})
+	}).WithContext(ctx))
 	if err != nil {
 		return "", fmt.Errorf("post silence for %s: %w", s.Name, err)
 	}
@@ -143,8 +143,8 @@ func (c *AlertManager) UpsertSilence(ctx context.Context, s *v1alpha1.Silence, s
 	return newId, nil
 }
 
-func (c *AlertManager) DeleteSilence(id string) error {
-	_, err := c.am.Silence.DeleteSilence(&silence.DeleteSilenceParams{
+func (c *AlertManager) DeleteSilence(ctx context.Context, id string) error {
+	_, err := c.am.Silence.DeleteSilence((&silence.DeleteSilenceParams{
 		SilenceID: strfmt.UUID(id),
 	})
 	if err != nil {

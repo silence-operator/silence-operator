@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Rule for running gazelle, every addlicense_fix, and lint together (bazel run //:tidy).
+"""Rule for running the same generation and lint steps CI checks, together (bazel run //:tidy).
 
 Not hermetic: it shells out to `bazel` on PATH to invoke the other targets, the same way
 bazel/lint.bzl shells out to golangci-lint. Safe to nest -- by the time this script runs, the
@@ -24,8 +24,14 @@ _SCRIPT = """\
 set -euo pipefail
 cd "$BUILD_WORKSPACE_DIRECTORY"
 
+echo "==> bazel mod tidy" >&2
+bazel mod tidy
+
 echo "==> bazel run //:gazelle" >&2
 bazel run //:gazelle
+
+echo "==> bazel run //:notice" >&2
+bazel run //:notice
 
 for t in $(bazel query 'kind(addlicense, //...)' --output=label 2>/dev/null | grep ':addlicense_fix$'); do
   echo "==> bazel run $t" >&2
