@@ -41,16 +41,16 @@ type AlertManager struct {
 	am *client.AlertmanagerAPI
 }
 
-func (c *AlertManager) GetSilences(filter []string) (*silence.GetSilencesOK, error) {
-	return c.am.Silence.GetSilences(&silence.GetSilencesParams{
+func (c *AlertManager) GetSilences(ctx context.Context, filter []string) (*silence.GetSilencesOK, error) {
+	return c.am.Silence.GetSilences((&silence.GetSilencesParams{
 		Filter: filter,
-	})
+	}).WithContext(ctx))
 }
 
-func (c *AlertManager) GetSilence(id string) (*silence.GetSilenceOK, error) {
-	return c.am.Silence.GetSilence(&silence.GetSilenceParams{
+func (c *AlertManager) GetSilence(ctx context.Context, id string) (*silence.GetSilenceOK, error) {
+	return c.am.Silence.GetSilence((&silence.GetSilenceParams{
 		SilenceID: strfmt.UUID(id),
-	})
+	}).WithContext(ctx))
 }
 
 // UpsertSilence will check if there is a silence with the same matchers.
@@ -63,7 +63,7 @@ func (c *AlertManager) UpsertSilence(ctx context.Context, s *v1alpha1.Silence, s
 
 		filter := s.Spec.Matchers.String()
 
-		result, err := c.GetSilences(filter)
+		result, err := c.GetSilences(ctx, filter)
 		if err != nil {
 			return "", err
 		}
@@ -111,7 +111,7 @@ func (c *AlertManager) UpsertSilence(ctx context.Context, s *v1alpha1.Silence, s
 	endsAt := strfmt.DateTime(now.Add(c.SilenceDuration))
 	comment := fmt.Sprintf("%s\nInstance: %s", s.Spec.Comment, c.InstanceName)
 
-	result, err := c.am.Silence.PostSilences(&silence.PostSilencesParams{
+	result, err := c.am.Silence.PostSilences((&silence.PostSilencesParams{
 		Silence: &models.PostableSilence{
 			ID: s.Status.AlertManagerID,
 			Silence: models.Silence{
@@ -122,7 +122,7 @@ func (c *AlertManager) UpsertSilence(ctx context.Context, s *v1alpha1.Silence, s
 				Matchers:  matchers,
 			},
 		},
-	})
+	}).WithContext(ctx))
 	if err != nil {
 		return "", err
 	}
@@ -133,10 +133,10 @@ func (c *AlertManager) UpsertSilence(ctx context.Context, s *v1alpha1.Silence, s
 	return newId, nil
 }
 
-func (c *AlertManager) DeleteSilence(id string) error {
-	_, err := c.am.Silence.DeleteSilence(&silence.DeleteSilenceParams{
+func (c *AlertManager) DeleteSilence(ctx context.Context, id string) error {
+	_, err := c.am.Silence.DeleteSilence((&silence.DeleteSilenceParams{
 		SilenceID: strfmt.UUID(id),
-	})
+	}).WithContext(ctx))
 
 	return err
 }

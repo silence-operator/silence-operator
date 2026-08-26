@@ -123,9 +123,13 @@ type fakeAlertManager struct {
 	t     *testing.T
 	calls callLog
 
-	getSilenceFunc    func(id string) (*silence.GetSilenceOK, error)
+	getSilenceFunc    func(ctx context.Context, id string) (*silence.GetSilenceOK, error)
 	upsertSilenceFunc func(ctx context.Context, s *monitoringv1alpha1.Silence, startsAt *strfmt.DateTime) (string, error)
-	deleteSilenceFunc func(id string) error
+	deleteSilenceFunc func(ctx context.Context, id string) error
+
+	// gotCtx records the ctx each method last received, so tests can assert Reconcile's
+	// ctx (not some substitute like context.Background()) actually reaches AlertManager.
+	gotCtx context.Context
 }
 
 func newFakeAlertManager(t *testing.T) *fakeAlertManager {
@@ -133,17 +137,19 @@ func newFakeAlertManager(t *testing.T) *fakeAlertManager {
 	return &fakeAlertManager{t: t, calls: callLog{}}
 }
 
-func (f *fakeAlertManager) GetSilence(id string) (*silence.GetSilenceOK, error) {
+func (f *fakeAlertManager) GetSilence(ctx context.Context, id string) (*silence.GetSilenceOK, error) {
 	f.calls["GetSilence"]++
+	f.gotCtx = ctx
 	if f.getSilenceFunc == nil {
 		f.t.Fatalf("unexpected GetSilence(%q)", id)
 	}
 
-	return f.getSilenceFunc(id)
+	return f.getSilenceFunc(ctx, id)
 }
 
 func (f *fakeAlertManager) UpsertSilence(ctx context.Context, s *monitoringv1alpha1.Silence, startsAt *strfmt.DateTime) (string, error) {
 	f.calls["UpsertSilence"]++
+	f.gotCtx = ctx
 	if f.upsertSilenceFunc == nil {
 		f.t.Fatal("unexpected UpsertSilence call")
 	}
@@ -151,13 +157,14 @@ func (f *fakeAlertManager) UpsertSilence(ctx context.Context, s *monitoringv1alp
 	return f.upsertSilenceFunc(ctx, s, startsAt)
 }
 
-func (f *fakeAlertManager) DeleteSilence(id string) error {
+func (f *fakeAlertManager) DeleteSilence(ctx context.Context, id string) error {
 	f.calls["DeleteSilence:"+id]++
+	f.gotCtx = ctx
 	if f.deleteSilenceFunc == nil {
 		f.t.Fatalf("unexpected DeleteSilence(%q)", id)
 	}
 
-	return f.deleteSilenceFunc(id)
+	return f.deleteSilenceFunc(ctx, id)
 }
 
 // gettableSilence builds the payload GetSilence returns.
@@ -242,7 +249,7 @@ func TestFetchSilenceState(t *testing.T) {
 	t.Run("succeeds on the first attempt", func(t *testing.T) {
 		am := newFakeAlertManager(t)
 		payload := gettableSilence(models.SilenceStatusStateActive, time.Now(), time.Now().Add(time.Hour))
-		am.getSilenceFunc = func(string) (*silence.GetSilenceOK, error) {
+		am.getSilenceFunc = func(context.Context, string) (*silence.GetSilenceOK, error) {
 			return &silence.GetSilenceOK{Payload: payload}, nil
 		}
 
@@ -257,9 +264,32 @@ func TestFetchSilenceState(t *testing.T) {
 		}
 	})
 
+	t.Run("propagates the caller's ctx to GetSilence", func(t *testing.T) {
+		am := newFakeAlertManager(t)
+		payload := gettableSilence(models.SilenceStatusStateActive, time.Now(), time.Now().Add(time.Hour))
+		am.getSilenceFunc = func(context.Context, string) (*silence.GetSilenceOK, error) {
+			return &silence.GetSilenceOK{Payload: payload}, nil
+		}
+
+		obj := newSilence("s", func(s *monitoringv1alpha1.Silence) {
+			withFinalizer(s)
+			s.Status.AlertManagerID = existingID
+		})
+		r := &SilenceReconciler{AlertManager: am, GetSilenceAttempts: 1}
+
+		type ctxKey struct{}
+		ctx := context.WithValue(context.Background(), ctxKey{}, "marker")
+
+		r.fetchSilenceState(ctx, obj)
+
+		if am.gotCtx != ctx {
+			t.Error("fetchSilenceState() did not pass the caller's ctx through to GetSilence")
+		}
+	})
+
 	t.Run("resets the id once attempts are exhausted", func(t *testing.T) {
 		am := newFakeAlertManager(t)
-		am.getSilenceFunc = func(string) (*silence.GetSilenceOK, error) { return nil, errors.New("boom") }
+		am.getSilenceFunc = func(context.Context, string) (*silence.GetSilenceOK, error) { return nil, errors.New("boom") }
 
 		obj := newSilence("s", func(s *monitoringv1alpha1.Silence) {
 			withFinalizer(s)
@@ -384,7 +414,7 @@ func TestReconcile_ExtendsSilenceWhoseGenerationChanged(t *testing.T) {
 	c := newFakeClient(t, withObjects(obj))
 
 	am := newFakeAlertManager(t)
-	am.getSilenceFunc = func(string) (*silence.GetSilenceOK, error) {
+	am.getSilenceFunc = func(context.Context, string) (*silence.GetSilenceOK, error) {
 		payload := gettableSilence(models.SilenceStatusStateActive, time.Now(), time.Now().Add(time.Hour))
 		return &silence.GetSilenceOK{Payload: payload}, nil
 	}
@@ -410,7 +440,8 @@ func TestReconcile_DeletionRemovesAlertManagerSilenceAndFinalizer(t *testing.T) 
 	})
 	c := newFakeClient(t, withObjects(obj))
 
-	ctx := context.Background()
+	type ctxKey struct{}
+	ctx := context.WithValue(context.Background(), ctxKey{}, "marker")
 
 	err := c.Delete(ctx, obj)
 	if err != nil {
@@ -418,7 +449,7 @@ func TestReconcile_DeletionRemovesAlertManagerSilenceAndFinalizer(t *testing.T) 
 	}
 
 	am := newFakeAlertManager(t)
-	am.deleteSilenceFunc = func(string) error { return nil }
+	am.deleteSilenceFunc = func(context.Context, string) error { return nil }
 	r := &SilenceReconciler{Client: c, AlertManager: am, Interval: reconcileInterval}
 
 	res, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: obj.Name}})
@@ -432,6 +463,10 @@ func TestReconcile_DeletionRemovesAlertManagerSilenceAndFinalizer(t *testing.T) 
 
 	if am.calls["DeleteSilence:to-delete-id"] == 0 {
 		t.Error("DeleteSilence was not called")
+	}
+
+	if am.gotCtx != ctx {
+		t.Error("Reconcile() did not pass its ctx through to DeleteSilence")
 	}
 
 	err = c.Get(ctx, types.NamespacedName{Name: obj.Name}, &monitoringv1alpha1.Silence{})
@@ -452,7 +487,7 @@ func TestReconcile_CleansUpAlertManagerSilenceWhenStatusUpdateFails(t *testing.T
 	am.upsertSilenceFunc = func(context.Context, *monitoringv1alpha1.Silence, *strfmt.DateTime) (string, error) {
 		return "orphan-id", nil
 	}
-	am.deleteSilenceFunc = func(string) error { return nil }
+	am.deleteSilenceFunc = func(context.Context, string) error { return nil }
 	r := &SilenceReconciler{Client: c, AlertManager: am, Interval: reconcileInterval}
 
 	_, err := r.Reconcile(context.Background(), reconcile.Request{NamespacedName: types.NamespacedName{Name: obj.Name}})
@@ -462,5 +497,39 @@ func TestReconcile_CleansUpAlertManagerSilenceWhenStatusUpdateFails(t *testing.T
 
 	if am.calls["DeleteSilence:orphan-id"] == 0 {
 		t.Error("the orphaned alertmanager silence was not cleaned up")
+	}
+}
+
+// A ctx canceled between the failed status update and the compensating delete (e.g. manager
+// shutdown) must not stop that delete: an uncleaned silence would otherwise leak in alertmanager.
+func TestReconcile_CleansUpAlertManagerSilenceEvenIfCtxIsCanceled(t *testing.T) {
+	obj := newSilence("ctx-canceled-cleanup", withFinalizer)
+	c := newFakeClient(t, withObjects(obj), withInterceptor(interceptor.Funcs{
+		SubResourceUpdate: func(context.Context, client.Client, string, client.Object, ...client.SubResourceUpdateOption) error {
+			return apierrors.NewConflict(monitoringv1alpha1.GroupVersion.WithResource("silences").GroupResource(), obj.Name, nil)
+		},
+	}))
+
+	am := newFakeAlertManager(t)
+	am.upsertSilenceFunc = func(context.Context, *monitoringv1alpha1.Silence, *strfmt.DateTime) (string, error) {
+		return "orphan-id", nil
+	}
+	am.deleteSilenceFunc = func(ctx context.Context, _ string) error { return ctx.Err() }
+	r := &SilenceReconciler{Client: c, AlertManager: am, Interval: reconcileInterval}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	_, err := r.Reconcile(ctx, reconcile.Request{NamespacedName: types.NamespacedName{Name: obj.Name}})
+	if err == nil {
+		t.Fatal("Reconcile() error = nil, want the status update error")
+	}
+
+	if am.calls["DeleteSilence:orphan-id"] == 0 {
+		t.Fatal("the orphaned alertmanager silence was not cleaned up")
+	}
+
+	if am.gotCtx.Err() != nil {
+		t.Errorf("DeleteSilence() ctx.Err() = %v, want nil (cleanup must survive a canceled ctx)", am.gotCtx.Err())
 	}
 }

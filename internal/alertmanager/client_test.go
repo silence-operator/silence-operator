@@ -98,7 +98,7 @@ func captureRequest(t *testing.T, mgr *AlertManager) *http.Request {
 		return nil, errRoundTripStubbed
 	})
 
-	_, _ = mgr.GetSilences(nil)
+	_, _ = mgr.GetSilences(context.Background(), nil)
 
 	if captured == nil {
 		t.Fatal("no request reached the fake transport")
@@ -142,7 +142,7 @@ func TestNew_ResolvesBareHostPort(t *testing.T) {
 
 	mgr := newTestAlertManager(t, bareHostPort)
 
-	_, err := mgr.GetSilences(nil)
+	_, err := mgr.GetSilences(context.Background(), nil)
 	if err != nil {
 		t.Fatalf("GetSilences() error = %v, want nil", err)
 	}
@@ -531,7 +531,7 @@ func TestGetSilenceAndDeleteSilence_CallSilenceByIDPath(t *testing.T) {
 			name:       "GetSilence",
 			wantMethod: http.MethodGet,
 			call: func(t *testing.T, mgr *AlertManager) {
-				result, err := mgr.GetSilence("some-id")
+				result, err := mgr.GetSilence(context.Background(), "some-id")
 				if err != nil {
 					t.Fatalf("GetSilence() error = %v", err)
 				}
@@ -545,7 +545,7 @@ func TestGetSilenceAndDeleteSilence_CallSilenceByIDPath(t *testing.T) {
 			name:       "DeleteSilence",
 			wantMethod: http.MethodDelete,
 			call: func(t *testing.T, mgr *AlertManager) {
-				err := mgr.DeleteSilence("some-id")
+				err := mgr.DeleteSilence(context.Background(), "some-id")
 				if err != nil {
 					t.Fatalf("DeleteSilence() error = %v", err)
 				}
@@ -587,13 +587,76 @@ func TestGetSilences_PassesFilter(t *testing.T) {
 
 	filter := []string{"alertname=TestAlert"}
 
-	_, err := am.GetSilences(filter)
+	_, err := am.GetSilences(context.Background(), filter)
 	if err != nil {
 		t.Fatalf("GetSilences() error = %v", err)
 	}
 
 	if len(capture.getFilter) != 1 || capture.getFilter[0] != filter[0] {
 		t.Errorf("GetSilences() filter query = %v, want %v", capture.getFilter, filter)
+	}
+}
+
+// TestContextCancellationAbortsTheRequest proves each method threads ctx into the outbound
+// call: a pre-canceled ctx must fail with context.Canceled before the server sees it.
+func TestContextCancellationAbortsTheRequest(t *testing.T) {
+	tests := []struct {
+		name string
+		call func(ctx context.Context, mgr *AlertManager) error
+	}{
+		{
+			name: "GetSilence",
+			call: func(ctx context.Context, mgr *AlertManager) error {
+				_, err := mgr.GetSilence(ctx, "some-id")
+				return err
+			},
+		},
+		{
+			name: "GetSilences",
+			call: func(ctx context.Context, mgr *AlertManager) error {
+				_, err := mgr.GetSilences(ctx, nil)
+				return err
+			},
+		},
+		{
+			name: "DeleteSilence",
+			call: func(ctx context.Context, mgr *AlertManager) error {
+				return mgr.DeleteSilence(ctx, "some-id")
+			},
+		},
+		{
+			name: "UpsertSilence",
+			call: func(ctx context.Context, mgr *AlertManager) error {
+				_, err := mgr.UpsertSilence(ctx, newTestSilence("some-id"), nil)
+				return err
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var serverHit bool
+
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				serverHit = true
+				writeJSON(t, w, activeSilence("some-id"))
+			}))
+			t.Cleanup(server.Close)
+
+			mgr := newTestAlertManager(t, server.URL)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			cancel()
+
+			err := tt.call(ctx, mgr)
+			if !errors.Is(err, context.Canceled) {
+				t.Errorf("%s() error = %v, want context.Canceled", tt.name, err)
+			}
+
+			if serverHit {
+				t.Errorf("%s() reached the server despite an already-canceled ctx", tt.name)
+			}
+		})
 	}
 }
 
@@ -617,21 +680,21 @@ func TestAlertManager_ReturnsErrorOnServerFailure(t *testing.T) {
 		{
 			name: "GetSilence",
 			call: func(mgr *AlertManager) error {
-				_, err := mgr.GetSilence("some-id")
+				_, err := mgr.GetSilence(context.Background(), "some-id")
 				return err
 			},
 		},
 		{
 			name: "GetSilences",
 			call: func(mgr *AlertManager) error {
-				_, err := mgr.GetSilences(nil)
+				_, err := mgr.GetSilences(context.Background(), nil)
 				return err
 			},
 		},
 		{
 			name: "DeleteSilence",
 			call: func(mgr *AlertManager) error {
-				return mgr.DeleteSilence("some-id")
+				return mgr.DeleteSilence(context.Background(), "some-id")
 			},
 		},
 	}
