@@ -38,7 +38,7 @@ gazelle(name = "gazelle")
 # (golangci-lint-action) is the actual gate -- this just runs the same pinned binary locally.
 golangci_lint(name = "lint")
 
-# Runs gazelle, every addlicense_fix, and lint together; see bazel/tidy.bzl.
+# Runs bazel mod tidy, gazelle, notice, every addlicense_fix, and lint together; see bazel/tidy.bzl.
 tidy(name = "tidy")
 
 package_metadata(
