@@ -44,6 +44,7 @@ var _ = Describe("Silence Controller", func() {
 
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind Silence")
+
 			err := k8sClient.Get(ctx, typeNamespacedName, silence)
 			if err != nil && errors.IsNotFound(err) {
 				resource := &monitoringv1alpha1.Silence{
@@ -73,6 +74,7 @@ var _ = Describe("Silence Controller", func() {
 		})
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
+
 			controllerReconciler := &SilenceReconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),

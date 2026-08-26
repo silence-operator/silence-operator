@@ -2,14 +2,19 @@ name: Bazel
 
 on:
   push:
-    branches:
-      - master
   pull_request:
 
+# Coverage-comment reruns on every push to a PR; cancel the superseded run rather than race it for the comment.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  build:
-    name: Build, test and lint (nogo) on Ubuntu
+  check-generated:
+    name: Check generated Bazel files are up to date
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Clone the code
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -27,9 +32,9 @@ jobs:
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: ~/.cache/bazel-disk
-          key: bazel-disk-${{ runner.os }}-${{ github.run_id }}
+          key: bazel-disk-${{ runner.os }}-${{ github.job }}-${{ github.run_id }}
           restore-keys: |
-            bazel-disk-${{ runner.os }}-
+            bazel-disk-${{ runner.os }}-${{ github.job }}-
 
       # Catches drift between go.mod/go.sum, MODULE.bazel/BUILD.bazel files, and NOTICE.
       - name: Check generated Bazel files are up to date
@@ -39,9 +44,148 @@ jobs:
           bazel run --config=ci //:notice
           git diff --exit-code
 
-      # Compiling every go_library/go_binary runs nogo (bazel/nogo/README.md) as a validation action.
+  build:
+    name: Build, test and lint (nogo) on Ubuntu
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - name: Clone the code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          # Full history only on PRs, to diff coverage against the base commit below; pushes stay shallow.
+          fetch-depth: ${{ github.event_name == 'pull_request' && '0' || '1' }}
+
+      - name: Set up Bazelisk
+        uses: bazelbuild/setup-bazelisk@b39c379c82683a5f25d34f0d062761f62693e0b2 # v3
+
+      - name: Cache Bazel repository cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/bazel-repo
+          key: bazel-repo-${{ runner.os }}-${{ hashFiles('MODULE.bazel', 'MODULE.bazel.lock', 'go.mod', 'go.sum') }}
+
+      - name: Cache Bazel disk cache
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.cache/bazel-disk
+          key: bazel-disk-${{ runner.os }}-${{ github.job }}-${{ github.run_id }}
+          restore-keys: |
+            bazel-disk-${{ runner.os }}-${{ github.job }}-
+
       - name: Build
         run: bazel build --config=ci //...
 
       - name: Test
-        run: bazel test --config=ci //... --test_tag_filters=-manual
+        if: github.event_name != 'pull_request'
+        run: bazel test --config=ci //...
+
+      # Same pass/fail gate as bazel test (a broken/failing target fails both identically); also produces the
+      # coverage report the steps below use, so a PR run executes the suite once instead of twice.
+      - name: Test with coverage
+        if: github.event_name == 'pull_request'
+        run: bazel coverage --config=ci //...
+
+      # Everything below is informational
+      - name: Extract PR coverage percentage
+        if: github.event_name == 'pull_request'
+        continue-on-error: true
+        id: head
+        uses: ./.github/actions/extract-coverage
+        with:
+          output-file: head-coverage.tsv
+          summary: 'true'
+
+      - name: Check out PR base commit
+        if: github.event_name == 'pull_request' && steps.head.outputs.pct != ''
+        continue-on-error: true
+        run: git checkout --force ${{ github.event.pull_request.base.sha }}
+
+      - name: Compute coverage for the base branch
+        if: github.event_name == 'pull_request' && steps.head.outputs.pct != ''
+        continue-on-error: true
+        id: base-compute
+        run: |
+          rm -f "$(bazel info output_path)/_coverage/_coverage_report.dat"
+          bazel coverage --config=ci //...
+
+      # extract-coverage is a local action needing action.yml on disk, which the base commit checked out above may predate; safe to switch back since the coverage report lives outside git, under Bazel's output tree.
+      - name: Check out PR head commit
+        if: github.event_name == 'pull_request' && steps.base-compute.outcome == 'success'
+        continue-on-error: true
+        run: git checkout --force ${{ github.event.pull_request.head.sha }}
+
+      - name: Extract base coverage percentage
+        if: github.event_name == 'pull_request' && steps.base-compute.outcome == 'success'
+        continue-on-error: true
+        id: base
+        uses: ./.github/actions/extract-coverage
+        with:
+          output-file: base-coverage.tsv
+
+      # continue-on-error: fork PRs get a read-only GITHUB_TOKEN on pull_request, so the comment call 403s there instead of failing CI (not switching to pull_request_target, which would hand a write token to untrusted PR code).
+      - name: Comment on PR with coverage delta
+        if: github.event_name == 'pull_request' && steps.head.outputs.pct != ''
+        continue-on-error: true
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const fs = require("fs");
+            const baseSha = "${{ github.event.pull_request.base.sha }}";
+            const marker = "<!-- coverage-report -->";
+
+            // Each row is "dir\tlinesFound\tlinesHit"; "TOTAL" is the whole-tracefile sum, written by the extract steps above.
+            function readTsv(path) {
+              const map = new Map();
+              if (!fs.existsSync(path)) return map;
+              for (const line of fs.readFileSync(path, "utf8").trim().split("\n")) {
+                const [dir, lf, lh] = line.split("\t");
+                if (dir) map.set(dir, { lf: Number(lf), lh: Number(lh) });
+              }
+              return map;
+            }
+            const pct = (entry) => (!entry || entry.lf === 0) ? null : (entry.lh * 100 / entry.lf);
+            const fmt = (p) => (p === null ? "—" : `${p.toFixed(1)}%`);
+
+            const head = readTsv("head-coverage.tsv");
+            const base = readTsv("base-coverage.tsv");
+            const dirs = new Set([...head.keys(), ...base.keys()]);
+            dirs.delete("TOTAL");
+            const rows = ["TOTAL", ...[...dirs].sort()]
+              .map((dir) => ({ dir: dir === "TOTAL" ? "**Total**" : dir, h: pct(head.get(dir)), b: pct(base.get(dir)) }))
+              .filter(({ dir, h, b }) => dir === "**Total**" || h !== null || b !== null);
+
+            let body = `${marker}\n## Coverage report\n\n`;
+            if (base.size > 0) {
+              const delta = ({ h, b }) => (h !== null && b !== null) ? `${h - b >= 0 ? "+" : ""}${(h - b).toFixed(1)}` : (h !== null ? "new" : "removed");
+              body += `Base: \`${baseSha.slice(0, 7)}\`\n\n| Directory | Base | PR | Δ |\n|---|---|---|---|\n`
+                + rows.map((r) => `| ${r.dir} | ${fmt(r.b)} | ${fmt(r.h)} | ${delta(r)} |`).join("\n") + "\n";
+            } else {
+              body += `Couldn't compute coverage for the base commit (${baseSha.slice(0, 7)}); showing this PR only.\n\n`
+                + `| Directory | PR |\n|---|---|\n`
+                + rows.map((r) => `| ${r.dir} | ${fmt(r.h)} |`).join("\n") + "\n";
+            }
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find(c => c.body && c.body.includes(marker));
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

@@ -1,0 +1,42 @@
+name: Extract Bazel coverage percentage
+description: >
+  Parses the Bazel coverage LCOV tracefile into a per-directory tsv breakdown and a total
+  percentage. Used for both the PR head and base commit so the numbers are computed identically.
+  Purely informational: callers set continue-on-error so a parsing failure here never blocks a
+  merge that otherwise passed build/test/lint.
+inputs:
+  output-file:
+    description: Path to write the per-directory tsv breakdown (dir, lines found, lines hit)
+    required: true
+  summary:
+    description: 'If true, also append a "### Coverage: X%" line to the job summary'
+    required: false
+    default: 'false'
+outputs:
+  pct:
+    description: Total coverage percentage across the whole tracefile
+    value: ${{ steps.extract.outputs.pct }}
+runs:
+  using: composite
+  steps:
+    - id: extract
+      shell: bash
+      run: |
+        report="$(bazel info output_path)/_coverage/_coverage_report.dat"
+        if [ ! -s "$report" ]; then
+          echo "::error::$report is missing or empty; nothing to report" >&2
+          exit 1
+        fi
+        # this llm-produced awk mess somewhat makes sense -- can be rewritten properly later
+        # $report is an LCOV tracefile: SF:<path> starts a per-file block ending in one "LF:<lines found>"/"LH:<lines hit>" pair; grouping those by the file's directory (and separately summing all of them as TOTAL) reproduces genhtml's own per-directory breakdown, without installing lcov.
+        awk -F: '
+          /^SF:/ { file=$0; sub(/^SF:/, "", file); n=split(file, parts, "/"); dir=(n>1) ? substr(file, 1, length(file)-length(parts[n])-1) : "." }
+          /^LF:/ { lf[dir]+=$2; lf["TOTAL"]+=$2 }
+          /^LH:/ { lh[dir]+=$2; lh["TOTAL"]+=$2 }
+          END { for (d in lf) printf "%s\t%d\t%d\n", d, lf[d], lh[d] }
+        ' "$report" | sort > "${{ inputs.output-file }}"
+        pct=$(awk -F'\t' '$1=="TOTAL"{if ($2>0) printf "%.1f", $3*100/$2; else exit 1}' "${{ inputs.output-file }}")
+        echo "pct=$pct" >> "$GITHUB_OUTPUT"
+        if [ "${{ inputs.summary }}" = "true" ]; then
+          echo "### Coverage: ${pct}%" >> "$GITHUB_STEP_SUMMARY"
+        fi

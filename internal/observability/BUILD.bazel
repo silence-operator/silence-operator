@@ -18,29 +18,23 @@ load("//bazel:addlicense.bzl", "license_check")
 package(default_package_metadata = ["//:package_metadata"])
 
 go_library(
-    name = "alertmanager",
-    srcs = ["client.go"],
-    importpath = "github.com/silence-operator/silence-operator/internal/alertmanager",
+    name = "observability",
+    srcs = ["observability.go"],
+    importpath = "github.com/silence-operator/silence-operator/internal/observability",
     visibility = ["//:__subpackages__"],
     deps = [
-        "//api/v1alpha1",
-        "@com_github_go_openapi_strfmt//:strfmt",
-        "@com_github_prometheus_alertmanager//api/v2/client",
-        "@com_github_prometheus_alertmanager//api/v2/client/silence",
-        "@com_github_prometheus_alertmanager//api/v2/models",
-        "@io_k8s_sigs_controller_runtime//:controller-runtime",
+        "//internal/tlsutil",
+        "@io_k8s_sigs_controller_runtime//pkg/certwatcher",
+        "@io_k8s_sigs_controller_runtime//pkg/metrics/filters",
+        "@io_k8s_sigs_controller_runtime//pkg/metrics/server",
     ],
 )
 
 license_check()
 
 go_test(
-    name = "alertmanager_test",
-    srcs = ["client_test.go"],
-    embed = [":alertmanager"],
-    deps = [
-        "//api/v1alpha1",
-        "@com_github_go_openapi_runtime//client",
-        "@com_github_go_openapi_strfmt//:strfmt",
-    ],
+    name = "observability_test",
+    srcs = ["observability_test.go"],
+    embed = [":observability"],
+    deps = ["//internal/tlsutil"],
 )

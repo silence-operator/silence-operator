@@ -3,6 +3,7 @@ module github.com/silence-operator/silence-operator
 go 1.26.5
 
 require (
+	github.com/go-openapi/runtime v0.33.0
 	github.com/go-openapi/strfmt v0.27.0
 	github.com/gordonklaus/ineffassign v0.2.0
 	github.com/kisielk/errcheck v1.9.0
@@ -39,7 +40,6 @@ require (
 	github.com/go-openapi/jsonpointer v1.0.0 // indirect
 	github.com/go-openapi/jsonreference v1.0.0 // indirect
 	github.com/go-openapi/loads v0.25.0 // indirect
-	github.com/go-openapi/runtime v0.33.0 // indirect
 	github.com/go-openapi/runtime/server-middleware v0.33.0 // indirect
 	github.com/go-openapi/spec v0.22.9 // indirect
 	github.com/go-openapi/swag v0.28.0 // indirect

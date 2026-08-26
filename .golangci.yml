@@ -15,12 +15,14 @@ linters:
     - lll
     - misspell
     - nakedret
+    - noinlineerr
     - prealloc
     - revive
     - staticcheck
     - unconvert
     - unparam
     - unused
+    - wsl_v5
   settings:
     revive:
       rules:
