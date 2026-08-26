@@ -52,10 +52,10 @@ func (c *AlertManager) GetSilences(ctx context.Context, filter []string) (*silen
 	return result, nil
 }
 
-func (c *AlertManager) GetSilence(id string) (*silence.GetSilenceOK, error) {
-	result, err := c.am.Silence.GetSilence(&silence.GetSilenceParams{
+func (c *AlertManager) GetSilence(ctx context.Context, id string) (*silence.GetSilenceOK, error) {
+	result, err := c.am.Silence.GetSilence((&silence.GetSilenceParams{
 		SilenceID: strfmt.UUID(id),
-	})
+	}).WithContext(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("get silence %s: %w", id, err)
 	}
