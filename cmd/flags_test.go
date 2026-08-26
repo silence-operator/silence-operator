@@ -20,34 +20,36 @@ import (
 	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
+	"github.com/silence-operator/silence-operator/internal/config"
 )
 
 func TestParseFlagsDefaults(t *testing.T) {
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	zapOpts := zap.Options{}
 
-	opts, err := parseFlags(fs, &zapOpts, nil)
+	cfg, err := parseFlags(fs, &zapOpts, nil)
 	if err != nil {
 		t.Fatalf("parseFlags() error = %v", err)
 	}
 
-	want := &operatorOptions{
-		metricsAddr:        "0",
-		probeAddr:          ":8081",
-		webhookCertName:    "tls.crt",
-		webhookCertKey:     "tls.key",
-		metricsCertName:    "tls.crt",
-		metricsCertKey:     "tls.key",
-		instanceName:       defaultInstanceName,
-		silenceAuthor:      defaultSilenceAuthor,
-		interval:           defaultInterval,
-		silenceDuration:    defaultDuration,
-		getSilenceAttempts: defaultGetSilenceAttempts,
-		getSilenceInterval: defaultGetSilenceInterval,
-		concurrency:        defaultConcurrency,
+	want := &config.Config{
+		MetricsAddr:        "0",
+		ProbeAddr:          ":8081",
+		WebhookCertName:    "tls.crt",
+		WebhookCertKey:     "tls.key",
+		MetricsCertName:    "tls.crt",
+		MetricsCertKey:     "tls.key",
+		InstanceName:       config.DefaultInstanceName,
+		SilenceAuthor:      config.DefaultSilenceAuthor,
+		Interval:           config.DefaultInterval,
+		SilenceDuration:    config.DefaultSilenceDuration,
+		GetSilenceAttempts: config.DefaultGetSilenceAttempts,
+		GetSilenceInterval: config.DefaultGetSilenceInterval,
+		Concurrency:        config.DefaultConcurrency,
 	}
-	if *opts != *want {
-		t.Fatalf("parseFlags() = %+v, want %+v", *opts, want)
+	if *cfg != *want {
+		t.Fatalf("parseFlags() = %+v, want %+v", *cfg, want)
 	}
 }
 
@@ -55,7 +57,7 @@ func TestParseFlagsOverrides(t *testing.T) {
 	fs := flag.NewFlagSet("test", flag.ContinueOnError)
 	zapOpts := zap.Options{}
 
-	opts, err := parseFlags(fs, &zapOpts, []string{
+	cfg, err := parseFlags(fs, &zapOpts, []string{
 		"-alertmanager-url", "http://alertmanager:9093",
 		"-concurrency", "42",
 		"-interval", "30s",
@@ -67,16 +69,16 @@ func TestParseFlagsOverrides(t *testing.T) {
 	}
 
 	switch {
-	case opts.alertManagerURL != "http://alertmanager:9093":
-		t.Errorf("alertManagerURL = %q", opts.alertManagerURL)
-	case opts.concurrency != 42:
-		t.Errorf("concurrency = %d", opts.concurrency)
-	case opts.interval != 30*time.Second:
-		t.Errorf("interval = %v", opts.interval)
-	case !opts.enableHTTP2:
-		t.Error("enableHTTP2 = false, want true")
-	case !opts.secureMetrics:
-		t.Error("secureMetrics = false, want true")
+	case cfg.AlertManagerURL != "http://alertmanager:9093":
+		t.Errorf("AlertManagerURL = %q", cfg.AlertManagerURL)
+	case cfg.Concurrency != 42:
+		t.Errorf("Concurrency = %d", cfg.Concurrency)
+	case cfg.Interval != 30*time.Second:
+		t.Errorf("Interval = %v", cfg.Interval)
+	case !cfg.EnableHTTP2:
+		t.Error("EnableHTTP2 = false, want true")
+	case !cfg.SecureMetrics:
+		t.Error("SecureMetrics = false, want true")
 	}
 }
 
