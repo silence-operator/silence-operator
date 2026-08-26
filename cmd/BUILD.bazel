@@ -29,6 +29,7 @@ go_library(
     deps = [
         "//api/v1alpha1",
         "//internal/alertmanager",
+        "//internal/config",
         "//internal/controller",
         "//internal/observability",
         "//internal/tlsutil",
@@ -63,6 +64,7 @@ go_test(
     ],
     embed = [":cmd_lib"],
     deps = [
+        "//internal/config",
         "@io_k8s_sigs_controller_runtime//pkg/certwatcher",
         "@io_k8s_sigs_controller_runtime//pkg/log/zap",
         "@io_k8s_sigs_controller_runtime//pkg/manager",

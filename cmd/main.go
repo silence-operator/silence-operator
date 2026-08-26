@@ -25,7 +25,7 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 	"k8s.io/utils/ptr"
-	"sigs.k8s.io/controller-runtime/pkg/config"
+	ctrlconfig "sigs.k8s.io/controller-runtime/pkg/config"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -67,31 +67,36 @@ func main() {
 func run(args []string) error {
 	zapOpts := zap.Options{Development: false}
 
-	opts, err := parseFlags(flag.CommandLine, &zapOpts, args)
+	cfg, err := parseFlags(flag.CommandLine, &zapOpts, args)
 	if err != nil {
 		return err
 	}
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&zapOpts)))
 
+	err = cfg.Validate()
+	if err != nil {
+		return fmt.Errorf("invalid configuration: %w", err)
+	}
+
 	// Pure validation first: fail before touching any OS resource (cert watchers open fsnotify watches).
 	alertManagerClient, err := alertmanager.New(&alertmanager.Config{
-		URL:             opts.alertManagerURL,
-		Author:          opts.silenceAuthor,
-		InstanceName:    opts.instanceName,
-		SilenceDuration: opts.silenceDuration,
+		URL:             cfg.AlertManagerURL,
+		Author:          cfg.SilenceAuthor,
+		InstanceName:    cfg.InstanceName,
+		SilenceDuration: cfg.SilenceDuration,
 	})
 	if err != nil {
 		return fmt.Errorf("invalid alertmanager configuration: %w", err)
 	}
 
-	if !opts.enableHTTP2 {
+	if !cfg.EnableHTTP2 {
 		setupLog.Info("disabling http/2")
 	}
 
-	tlsOpts := tlsutil.Options(opts.enableHTTP2)
+	tlsOpts := tlsutil.Options(cfg.EnableHTTP2)
 
-	webhookCertWatcher, err := setupCertWatcher("webhook", opts.webhookCertPath, opts.webhookCertName, opts.webhookCertKey)
+	webhookCertWatcher, err := setupCertWatcher("webhook", cfg.WebhookCertPath, cfg.WebhookCertName, cfg.WebhookCertKey)
 	if err != nil {
 		return err
 	}
@@ -99,21 +104,21 @@ func run(args []string) error {
 	webhookServer := webhook.NewServer(webhook.Options{TLSOpts: tlsutil.WithCertificate(tlsOpts, webhookCertWatcher)})
 
 	// Without a certificate, controller-runtime self-signs one for the metrics endpoint (fine for dev, not prod).
-	metricsCertWatcher, err := setupCertWatcher("metrics", opts.metricsCertPath, opts.metricsCertName, opts.metricsCertKey)
+	metricsCertWatcher, err := setupCertWatcher("metrics", cfg.MetricsCertPath, cfg.MetricsCertName, cfg.MetricsCertKey)
 	if err != nil {
 		return err
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
-		Metrics:                o11y.MetricsOptions(opts.metricsAddr, opts.secureMetrics, tlsOpts, metricsCertWatcher),
+		Metrics:                o11y.MetricsOptions(cfg.MetricsAddr, cfg.SecureMetrics, tlsOpts, metricsCertWatcher),
 		WebhookServer:          webhookServer,
-		HealthProbeBindAddress: opts.probeAddr,
-		LeaderElection:         opts.enableLeaderElection,
+		HealthProbeBindAddress: cfg.ProbeAddr,
+		LeaderElection:         cfg.EnableLeaderElection,
 		LeaderElectionID:       "silence-operator-leader-election",
 		// LeaderElectionReleaseOnCancel is left off: it's only safe once shutdown never lingers.
-		Controller: config.Controller{
-			MaxConcurrentReconciles: opts.concurrency,
+		Controller: ctrlconfig.Controller{
+			MaxConcurrentReconciles: cfg.Concurrency,
 			RecoverPanic:            ptr.To(true),
 		},
 	})
@@ -125,9 +130,9 @@ func run(args []string) error {
 		Client:             mgr.GetClient(),
 		Scheme:             mgr.GetScheme(),
 		AlertManager:       alertManagerClient,
-		Interval:           opts.interval,
-		GetSilenceAttempts: opts.getSilenceAttempts,
-		GetSilenceInterval: opts.getSilenceInterval,
+		Interval:           cfg.Interval,
+		GetSilenceAttempts: cfg.GetSilenceAttempts,
+		GetSilenceInterval: cfg.GetSilenceInterval,
 	}).SetupWithManager(mgr)
 	if err != nil {
 		return fmt.Errorf("unable to create Silence controller: %w", err)
