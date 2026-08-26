@@ -32,6 +32,10 @@ import (
 	monitoringv1alpha1 "github.com/silence-operator/silence-operator/api/v1alpha1"
 )
 
+// extendSilenceThresholdReconciles is how many reconciliations of headroom a silence must have
+// left on its EndsAt before we bother extending it early, to avoid re-extending on every loop.
+const extendSilenceThresholdReconciles = 3
+
 // AlertManagerClient is the subset of alertmanager.AlertManager's API the reconciler depends on;
 // depending on this instead of the concrete type lets tests substitute a fake.
 type AlertManagerClient interface {
@@ -207,8 +211,8 @@ func decideSilence(obj *monitoringv1alpha1.Silence, state *models.GettableSilenc
 		return silenceDecision{startsAt: state.StartsAt, logMsg: "updating alertmanager silence"}
 	}
 
-	// Extend silence if three or less reconciliations left
-	deadline := now.Add(interval * 3)
+	// Extend silence if extendSilenceThresholdReconciles or fewer reconciliations are left
+	deadline := now.Add(interval * extendSilenceThresholdReconciles)
 	if deadline.Before(time.Time(*state.EndsAt)) {
 		return silenceDecision{skip: true}
 	}
