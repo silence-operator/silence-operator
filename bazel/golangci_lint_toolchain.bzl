@@ -18,24 +18,24 @@ Kept in sync with the version `.github/workflows/lint.yml`'s golangci-lint-actio
 `bazel run //:lint` and CI's Lint job report the same issues.
 """
 
-VERSION = "2.12.2"
+VERSION = "2.13.1"
 
 _GOLANGCI_LINT_URLS = {
     "linux_amd64": (
-        "https://github.com/golangci/golangci-lint/releases/download/v2.12.2/golangci-lint-2.12.2-linux-amd64.tar.gz",
-        "8df580d2670fed8fa984aac0507099af8df275e665215f5c7a2ae3943893a553",
+        "https://github.com/golangci/golangci-lint/releases/download/v2.13.1/golangci-lint-2.13.1-linux-amd64.tar.gz",
+        "b17bfbc9d4aaa48be7f4f1ce3240bc3d8200c870c072bacf15c26219e2cfb9cc",
     ),
     "linux_arm64": (
-        "https://github.com/golangci/golangci-lint/releases/download/v2.12.2/golangci-lint-2.12.2-linux-arm64.tar.gz",
-        "44cd40a8c76c86755375adfeea52cfd3533cb43d7bd647771e0ae065e166df3a",
+        "https://github.com/golangci/golangci-lint/releases/download/v2.13.1/golangci-lint-2.13.1-linux-arm64.tar.gz",
+        "908317c23db18448f924e853b3d8a659fd919614cd438f224810a4053daa2607",
     ),
     "darwin_amd64": (
-        "https://github.com/golangci/golangci-lint/releases/download/v2.12.2/golangci-lint-2.12.2-darwin-amd64.tar.gz",
-        "f6f06d94b6241521c53d15450c5209b028270bf966f842afb11c030c79f5bc16",
+        "https://github.com/golangci/golangci-lint/releases/download/v2.13.1/golangci-lint-2.13.1-darwin-amd64.tar.gz",
+        "2c373363953e4e0bee2a03b7fe864a5eb6a3822927cb077d9ca33f2ae3cb2da2",
     ),
     "darwin_arm64": (
-        "https://github.com/golangci/golangci-lint/releases/download/v2.12.2/golangci-lint-2.12.2-darwin-arm64.tar.gz",
-        "a9c54498731b3128f79e090be6110f3e5fffccc617b08142ed244d4126c73f29",
+        "https://github.com/golangci/golangci-lint/releases/download/v2.13.1/golangci-lint-2.13.1-darwin-arm64.tar.gz",
+        "0c9818baf6fb8ad26c6d2ef51b68d5a1e260ef07727036b1431647cc44637c7c",
     ),
 }
 

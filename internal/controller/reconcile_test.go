@@ -140,6 +140,7 @@ func newFakeAlertManager(t *testing.T) *fakeAlertManager {
 func (f *fakeAlertManager) GetSilence(ctx context.Context, id string) (*silence.GetSilenceOK, error) {
 	f.calls["GetSilence"]++
 	f.gotCtx = ctx
+
 	if f.getSilenceFunc == nil {
 		f.t.Fatalf("unexpected GetSilence(%q)", id)
 	}
@@ -150,6 +151,7 @@ func (f *fakeAlertManager) GetSilence(ctx context.Context, id string) (*silence.
 func (f *fakeAlertManager) UpsertSilence(ctx context.Context, s *monitoringv1alpha1.Silence, startsAt *strfmt.DateTime) (string, error) {
 	f.calls["UpsertSilence"]++
 	f.gotCtx = ctx
+
 	if f.upsertSilenceFunc == nil {
 		f.t.Fatal("unexpected UpsertSilence call")
 	}
@@ -160,6 +162,7 @@ func (f *fakeAlertManager) UpsertSilence(ctx context.Context, s *monitoringv1alp
 func (f *fakeAlertManager) DeleteSilence(ctx context.Context, id string) error {
 	f.calls["DeleteSilence:"+id]++
 	f.gotCtx = ctx
+
 	if f.deleteSilenceFunc == nil {
 		f.t.Fatalf("unexpected DeleteSilence(%q)", id)
 	}
@@ -278,6 +281,7 @@ func TestFetchSilenceState(t *testing.T) {
 		r := &SilenceReconciler{AlertManager: am, GetSilenceAttempts: 1}
 
 		type ctxKey struct{}
+
 		ctx := context.WithValue(context.Background(), ctxKey{}, "marker")
 
 		r.fetchSilenceState(ctx, obj)
@@ -441,6 +445,7 @@ func TestReconcile_DeletionRemovesAlertManagerSilenceAndFinalizer(t *testing.T) 
 	c := newFakeClient(t, withObjects(obj))
 
 	type ctxKey struct{}
+
 	ctx := context.WithValue(context.Background(), ctxKey{}, "marker")
 
 	err := c.Delete(ctx, obj)

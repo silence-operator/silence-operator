@@ -41,6 +41,8 @@ const (
 	testAlertName            = "TestAlert"
 	testAlertmanagerHostPort = "alertmanager.default:9093"
 	httpScheme               = "http"
+	getSilenceName           = "GetSilence"
+	deleteSilenceName        = "DeleteSilence"
 )
 
 func newTestSilence(amID string) *v1alpha1.Silence {
@@ -528,7 +530,7 @@ func TestGetSilenceAndDeleteSilence_CallSilenceByIDPath(t *testing.T) {
 		call       func(t *testing.T, mgr *AlertManager) // makes the request and checks its own return value
 	}{
 		{
-			name:       "GetSilence",
+			name:       getSilenceName,
 			wantMethod: http.MethodGet,
 			call: func(t *testing.T, mgr *AlertManager) {
 				result, err := mgr.GetSilence(context.Background(), "some-id")
@@ -542,7 +544,7 @@ func TestGetSilenceAndDeleteSilence_CallSilenceByIDPath(t *testing.T) {
 			},
 		},
 		{
-			name:       "DeleteSilence",
+			name:       deleteSilenceName,
 			wantMethod: http.MethodDelete,
 			call: func(t *testing.T, mgr *AlertManager) {
 				err := mgr.DeleteSilence(context.Background(), "some-id")
@@ -605,7 +607,7 @@ func TestContextCancellationAbortsTheRequest(t *testing.T) {
 		call func(ctx context.Context, mgr *AlertManager) error
 	}{
 		{
-			name: "GetSilence",
+			name: getSilenceName,
 			call: func(ctx context.Context, mgr *AlertManager) error {
 				_, err := mgr.GetSilence(ctx, "some-id")
 				return err
@@ -619,7 +621,7 @@ func TestContextCancellationAbortsTheRequest(t *testing.T) {
 			},
 		},
 		{
-			name: "DeleteSilence",
+			name: deleteSilenceName,
 			call: func(ctx context.Context, mgr *AlertManager) error {
 				return mgr.DeleteSilence(ctx, "some-id")
 			},
@@ -639,6 +641,7 @@ func TestContextCancellationAbortsTheRequest(t *testing.T) {
 
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				serverHit = true
+
 				writeJSON(t, w, activeSilence("some-id"))
 			}))
 			t.Cleanup(server.Close)
@@ -678,7 +681,7 @@ func TestAlertManager_ReturnsErrorOnServerFailure(t *testing.T) {
 		call func(mgr *AlertManager) error
 	}{
 		{
-			name: "GetSilence",
+			name: getSilenceName,
 			call: func(mgr *AlertManager) error {
 				_, err := mgr.GetSilence(context.Background(), "some-id")
 				return err
@@ -692,7 +695,7 @@ func TestAlertManager_ReturnsErrorOnServerFailure(t *testing.T) {
 			},
 		},
 		{
-			name: "DeleteSilence",
+			name: deleteSilenceName,
 			call: func(mgr *AlertManager) error {
 				return mgr.DeleteSilence(context.Background(), "some-id")
 			},
