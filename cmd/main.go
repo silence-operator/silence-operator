@@ -24,7 +24,6 @@ import (
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
-	"k8s.io/utils/ptr"
 	ctrlconfig "sigs.k8s.io/controller-runtime/pkg/config"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -119,7 +118,7 @@ func run(args []string) error {
 		// LeaderElectionReleaseOnCancel is left off: it's only safe once shutdown never lingers.
 		Controller: ctrlconfig.Controller{
 			MaxConcurrentReconciles: cfg.Concurrency,
-			RecoverPanic:            ptr.To(true),
+			RecoverPanic:            new(true),
 		},
 	})
 	if err != nil {
