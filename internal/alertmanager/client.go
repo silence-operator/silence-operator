@@ -41,10 +41,10 @@ type AlertManager struct {
 	am *client.AlertmanagerAPI
 }
 
-func (c *AlertManager) GetSilences(filter []string) (*silence.GetSilencesOK, error) {
-	result, err := c.am.Silence.GetSilences(&silence.GetSilencesParams{
+func (c *AlertManager) GetSilences(ctx context.Context, filter []string) (*silence.GetSilencesOK, error) {
+	result, err := c.am.Silence.GetSilences((&silence.GetSilencesParams{
 		Filter: filter,
-	})
+	}).WithContext(ctx))
 	if err != nil {
 		return nil, fmt.Errorf("get silences: %w", err)
 	}
@@ -146,7 +146,7 @@ func (c *AlertManager) UpsertSilence(ctx context.Context, s *v1alpha1.Silence, s
 func (c *AlertManager) DeleteSilence(ctx context.Context, id string) error {
 	_, err := c.am.Silence.DeleteSilence((&silence.DeleteSilenceParams{
 		SilenceID: strfmt.UUID(id),
-	})
+	}).WithContext(ctx))
 	if err != nil {
 		return fmt.Errorf("delete silence %s: %w", id, err)
 	}
