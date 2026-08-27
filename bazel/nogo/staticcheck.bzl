@@ -102,7 +102,8 @@ STATICCHECK_SA_ANALYZERS = [
     "@co_honnef_go_tools//staticcheck/sa5008:sa5008",
     "@co_honnef_go_tools//staticcheck/sa5009:sa5009",
     "@co_honnef_go_tools//staticcheck/sa5010:sa5010",
-    "@co_honnef_go_tools//staticcheck/sa5011:sa5011",
+    # https://github.com/dominikh/go-tools/commit/5161aaa1814bc64a9999cd01e99c461b96f55eab
+    # "@co_honnef_go_tools//staticcheck/sa5011:sa5011",
     "@co_honnef_go_tools//staticcheck/sa5012:sa5012",
     "@co_honnef_go_tools//staticcheck/sa6000:sa6000",
     "@co_honnef_go_tools//staticcheck/sa6001:sa6001",
