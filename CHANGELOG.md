@@ -1,5 +1,19 @@
 # Changelog
 
+## [2.2.0](https://github.com/silence-operator/silence-operator/compare/v2.1.3...v2.2.0) (2026-08-27)
+
+
+### Features
+
+* **release:** Bump minor release version ([#34](https://github.com/silence-operator/silence-operator/issues/34)) ([f35812c](https://github.com/silence-operator/silence-operator/commit/f35812c14aa7ef3b9cf8975b6b695fe8c51fc947))
+
+
+### Bug Fixes
+
+* **alertmanager:** propagate context.Context to all AlertManager calls ([#29](https://github.com/silence-operator/silence-operator/issues/29)) ([cd89888](https://github.com/silence-operator/silence-operator/commit/cd898883eb1c8d4d361755f8dbfe0cfdba47da56))
+* **alertmanager:** wrap errors with call context ([#31](https://github.com/silence-operator/silence-operator/issues/31)) ([f2903bd](https://github.com/silence-operator/silence-operator/commit/f2903bd42ad61296cca3158888ccb16cbbd44b3d))
+* **cmd:** extract config package and validate inputs ([#30](https://github.com/silence-operator/silence-operator/issues/30)) ([8ec0a53](https://github.com/silence-operator/silence-operator/commit/8ec0a53fd4d97bfbc75f62bd4cb8db361e437435))
+
 ## [2.1.3](https://github.com/silence-operator/silence-operator/compare/v2.1.2...v2.1.3) (2025-08-05)
 
 
