@@ -677,8 +677,9 @@ func errServer(t *testing.T) *httptest.Server {
 
 func TestAlertManager_ReturnsErrorOnServerFailure(t *testing.T) {
 	tests := []struct {
-		name string
-		call func(mgr *AlertManager) error
+		name       string
+		call       func(mgr *AlertManager) error
+		wantPrefix string // the call's identifying context, so a failure doesn't dead-end far from its cause
 	}{
 		{
 			name: getSilenceName,
@@ -686,6 +687,7 @@ func TestAlertManager_ReturnsErrorOnServerFailure(t *testing.T) {
 				_, err := mgr.GetSilence(context.Background(), "some-id")
 				return err
 			},
+			wantPrefix: "get silence some-id",
 		},
 		{
 			name: "GetSilences",
@@ -693,12 +695,14 @@ func TestAlertManager_ReturnsErrorOnServerFailure(t *testing.T) {
 				_, err := mgr.GetSilences(context.Background(), nil)
 				return err
 			},
+			wantPrefix: "get silences",
 		},
 		{
 			name: deleteSilenceName,
 			call: func(mgr *AlertManager) error {
 				return mgr.DeleteSilence(context.Background(), "some-id")
 			},
+			wantPrefix: "delete silence some-id",
 		},
 	}
 
@@ -710,7 +714,42 @@ func TestAlertManager_ReturnsErrorOnServerFailure(t *testing.T) {
 			if err == nil {
 				t.Fatalf("%s() error = nil, want error on server failure", tt.name)
 			}
+
+			if !strings.HasPrefix(err.Error(), tt.wantPrefix) {
+				t.Errorf("%s() error = %q, want prefix %q", tt.name, err.Error(), tt.wantPrefix)
+			}
 		})
+	}
+}
+
+// A PostSilences failure must be wrapped with the silence's name, not surfaced bare.
+func TestUpsertSilence_WrapsPostFailureWithSilenceName(t *testing.T) {
+	server, _ := newFailingPostSilencesServer(t, []map[string]any{})
+
+	mgr := newTestAlertManager(t, server.URL)
+
+	s := newTestSilence("")
+	s.Name = "my-silence"
+
+	_, err := mgr.UpsertSilence(context.Background(), s, nil)
+	if err == nil {
+		t.Fatal("UpsertSilence() error = nil, want error when PostSilences fails")
+	}
+
+	if !strings.HasPrefix(err.Error(), "post silence for my-silence") {
+		t.Errorf("UpsertSilence() error = %q, want prefix %q", err.Error(), "post silence for my-silence")
+	}
+}
+
+// An unparseable URL must be wrapped, naming the URL that failed to parse.
+func TestNew_WrapsURLParseError(t *testing.T) {
+	_, err := New(&Config{URL: "http://[::1]:namedport"})
+	if err == nil {
+		t.Fatal("New() error = nil, want error for an unparseable url")
+	}
+
+	if !strings.HasPrefix(err.Error(), `parse alertmanager url "http://[::1]:namedport"`) {
+		t.Errorf("New() error = %q, want prefix naming the url", err.Error())
 	}
 }
 

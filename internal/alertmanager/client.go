@@ -42,15 +42,25 @@ type AlertManager struct {
 }
 
 func (c *AlertManager) GetSilences(ctx context.Context, filter []string) (*silence.GetSilencesOK, error) {
-	return c.am.Silence.GetSilences((&silence.GetSilencesParams{
+	result, err := c.am.Silence.GetSilences((&silence.GetSilencesParams{
 		Filter: filter,
 	}).WithContext(ctx))
+	if err != nil {
+		return nil, fmt.Errorf("get silences: %w", err)
+	}
+
+	return result, nil
 }
 
 func (c *AlertManager) GetSilence(ctx context.Context, id string) (*silence.GetSilenceOK, error) {
-	return c.am.Silence.GetSilence((&silence.GetSilenceParams{
+	result, err := c.am.Silence.GetSilence((&silence.GetSilenceParams{
 		SilenceID: strfmt.UUID(id),
 	}).WithContext(ctx))
+	if err != nil {
+		return nil, fmt.Errorf("get silence %s: %w", id, err)
+	}
+
+	return result, nil
 }
 
 // UpsertSilence will check if there is a silence with the same matchers.
@@ -124,7 +134,7 @@ func (c *AlertManager) UpsertSilence(ctx context.Context, s *v1alpha1.Silence, s
 		},
 	}).WithContext(ctx))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("post silence for %s: %w", s.Name, err)
 	}
 
 	newId := result.GetPayload().SilenceID
@@ -137,8 +147,11 @@ func (c *AlertManager) DeleteSilence(ctx context.Context, id string) error {
 	_, err := c.am.Silence.DeleteSilence((&silence.DeleteSilenceParams{
 		SilenceID: strfmt.UUID(id),
 	}).WithContext(ctx))
+	if err != nil {
+		return fmt.Errorf("delete silence %s: %w", id, err)
+	}
 
-	return err
+	return nil
 }
 
 type Config struct {
@@ -168,7 +181,7 @@ func New(cfg *Config) (*AlertManager, error) {
 
 	amURL, err := url.Parse(rawURL)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("parse alertmanager url %q: %w", cfg.URL, err)
 	}
 
 	if amURL.Host == "" {
