@@ -10,7 +10,6 @@ builds:
     main: ./cmd
     binary: silence-operator
     goos:
-      - darwin
       - linux
     goarch:
       - amd64
@@ -27,8 +26,6 @@ kos:
     platforms:
       - linux/amd64
       - linux/arm64
-      - darwin/arm64
-      - darwin/amd64
     user: "65532:65532"
 
 changelog:
