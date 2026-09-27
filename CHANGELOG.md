@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.1](https://github.com/silence-operator/silence-operator/compare/v2.2.0...v2.2.1) (2026-09-27)
+
+
+### Bug Fixes
+
+* Fix go build ([#35](https://github.com/silence-operator/silence-operator/issues/35)) ([1160e0b](https://github.com/silence-operator/silence-operator/commit/1160e0b6ebdcd6395ebb901766095808cdc75b58))
+
 ## [2.2.0](https://github.com/silence-operator/silence-operator/compare/v2.1.3...v2.2.0) (2026-08-27)
 
 
