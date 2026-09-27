@@ -9,41 +9,41 @@ Go module dependencies compiled into the "manager" binary
 ================================================================================
 ================================================================================
   cel.dev/expr v0.25.3
-  github.com/go-openapi/analysis v0.26.2
-  github.com/go-openapi/errors v0.22.8
-  github.com/go-openapi/jsonreference v1.0.1
-  github.com/go-openapi/loads v0.25.2
-  github.com/go-openapi/runtime v0.33.1
-  github.com/go-openapi/runtime/server-middleware v0.33.1
-  github.com/go-openapi/spec v0.22.11
-  github.com/go-openapi/strfmt v0.27.0
-  github.com/go-openapi/swag v0.29.1
-  github.com/go-openapi/swag/cmdutils v0.29.1
-  github.com/go-openapi/swag/conv v0.29.1
-  github.com/go-openapi/swag/fileutils v0.29.1
-  github.com/go-openapi/swag/jsonutils v0.29.1
-  github.com/go-openapi/swag/loading v0.29.1
-  github.com/go-openapi/swag/mangling v0.29.1
-  github.com/go-openapi/swag/netutils v0.29.1
-  github.com/go-openapi/swag/pools v0.29.1
-  github.com/go-openapi/swag/stringutils v0.29.1
-  github.com/go-openapi/swag/typeutils v0.29.1
-  github.com/go-openapi/swag/yamlutils v0.29.1
-  github.com/go-openapi/validate v0.26.5
-  google.golang.org/genproto/googleapis/api v0.0.0-20260825221802-da73d73af1c5
-  google.golang.org/genproto/googleapis/rpc v0.0.0-20260825221802-da73d73af1c5
-  google.golang.org/grpc v1.83.2
-  k8s.io/api v0.37.0
-  k8s.io/apiextensions-apiserver/pkg/apis/apiextensions v0.37.0
-  k8s.io/apimachinery/pkg v0.37.0
-  k8s.io/apiserver v0.37.0
-  k8s.io/client-go v0.37.0
-  k8s.io/component-base v0.37.0
+  github.com/go-openapi/analysis v1.0.0
+  github.com/go-openapi/errors v0.22.9
+  github.com/go-openapi/jsonreference v1.0.3
+  github.com/go-openapi/loads v0.25.3
+  github.com/go-openapi/runtime v0.33.2
+  github.com/go-openapi/runtime/server-middleware v0.33.2
+  github.com/go-openapi/spec v1.0.1
+  github.com/go-openapi/strfmt v0.27.2
+  github.com/go-openapi/swag v0.29.2
+  github.com/go-openapi/swag/cmdutils v0.29.2
+  github.com/go-openapi/swag/conv v0.29.2
+  github.com/go-openapi/swag/fileutils v0.29.2
+  github.com/go-openapi/swag/jsonutils v0.29.2
+  github.com/go-openapi/swag/loading v0.29.2
+  github.com/go-openapi/swag/mangling v0.29.2
+  github.com/go-openapi/swag/netutils v0.29.2
+  github.com/go-openapi/swag/pools v0.29.2
+  github.com/go-openapi/swag/stringutils v0.29.2
+  github.com/go-openapi/swag/typeutils v0.29.2
+  github.com/go-openapi/swag/yamlutils v0.29.2
+  github.com/go-openapi/validate v1.0.0
+  google.golang.org/genproto/googleapis/api v0.0.0-20260921155816-b14227669459
+  google.golang.org/genproto/googleapis/rpc v0.0.0-20260921155816-b14227669459
+  google.golang.org/grpc v1.84.0
+  k8s.io/api v0.37.1
+  k8s.io/apiextensions-apiserver/pkg/apis/apiextensions v0.37.1
+  k8s.io/apimachinery/pkg v0.37.1
+  k8s.io/apiserver v0.37.1
+  k8s.io/client-go v0.37.1
+  k8s.io/component-base v0.37.1
   k8s.io/kube-openapi/pkg v0.0.0-20260821135717-be32def86098
   k8s.io/kube-openapi/pkg/validation/errors v0.0.0-20260821135717-be32def86098
   k8s.io/kube-openapi/pkg/validation/spec v0.0.0-20260821135717-be32def86098
   k8s.io/kube-openapi/pkg/validation/strfmt v0.0.0-20260821135717-be32def86098
-  k8s.io/streaming/pkg v0.37.0
+  k8s.io/streaming/pkg v0.37.1
   k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3
   k8s.io/utils/third_party/forked/golang/btree v0.0.0-20260707023825-cf1189d6abe3
 --------------------------------------------------------------------------------
@@ -510,7 +510,7 @@ ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
-  github.com/fxamacker/cbor/v2 v2.9.3
+  github.com/fxamacker/cbor/v2 v2.9.4
 --------------------------------------------------------------------------------
 MIT License
 
@@ -538,8 +538,8 @@ SOFTWARE.
   github.com/go-logr/logr v1.4.4
   github.com/go-logr/zapr v1.3.0
   go.yaml.in/yaml/v2 v2.4.4
-  sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.36.0
-  sigs.k8s.io/controller-runtime v0.24.1
+  sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.37.0
+  sigs.k8s.io/controller-runtime v0.25.1
   sigs.k8s.io/structured-merge-diff/v6 v6.4.2
 --------------------------------------------------------------------------------
                                  Apache License
@@ -746,15 +746,15 @@ SOFTWARE.
 
 ================================================================================
   github.com/go-logr/stdr v1.2.2
-  github.com/go-openapi/jsonpointer v1.0.0
+  github.com/go-openapi/jsonpointer v1.0.2
   github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd
   github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee
   github.com/oklog/ulid/v2 v2.1.2
-  github.com/prometheus/alertmanager/api/v2 v0.34.0
+  github.com/prometheus/alertmanager/api/v2 v0.34.1
   github.com/prometheus/client_golang/prometheus v1.24.1
-  github.com/prometheus/client_model/go v0.6.2
-  github.com/prometheus/common v0.70.1
-  github.com/prometheus/procfs v0.21.1
+  github.com/prometheus/client_model/go v0.6.3
+  github.com/prometheus/common v0.71.0
+  github.com/prometheus/procfs v0.22.0
   go.opentelemetry.io/auto/sdk v1.2.1
   go.opentelemetry.io/proto/otlp v1.11.0
 --------------------------------------------------------------------------------
@@ -961,7 +961,7 @@ SOFTWARE.
    limitations under the License.
 
 ================================================================================
-  github.com/go-openapi/runtime/middleware/denco v0.33.1
+  github.com/go-openapi/runtime/middleware/denco v0.33.2
 --------------------------------------------------------------------------------
 Copyright (c) 2014 Naoya Inada <naoina@kuune.org>
 
@@ -1484,7 +1484,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
-  github.com/grpc-ecosystem/grpc-gateway/v2 v2.30.0
+  github.com/grpc-ecosystem/grpc-gateway/v2 v2.31.0
 --------------------------------------------------------------------------------
 Copyright (c) 2015, Gengo, Inc.
 All rights reserved.
@@ -2214,14 +2214,14 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 ================================================================================
-  golang.org/x/exp/slices v0.0.0-20260824195058-e88cd73687aa
-  golang.org/x/net v0.58.0
-  golang.org/x/oauth2 v0.36.0
-  golang.org/x/sync v0.22.0
-  golang.org/x/sys/unix v0.47.0
-  golang.org/x/term v0.45.0
-  golang.org/x/text v0.41.0
-  golang.org/x/time/rate v0.15.0
+  golang.org/x/exp/slices v0.0.0-20260908205506-85c1c2202aba
+  golang.org/x/net v0.59.0
+  golang.org/x/oauth2 v0.37.0
+  golang.org/x/sync v0.23.0
+  golang.org/x/sys/unix v0.48.0
+  golang.org/x/term v0.46.0
+  golang.org/x/text v0.42.0
+  golang.org/x/time/rate v0.16.0
 --------------------------------------------------------------------------------
 Copyright 2009 The Go Authors.
 
@@ -2521,7 +2521,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
-  k8s.io/apimachinery/third_party/forked/golang v0.37.0
+  k8s.io/apimachinery/third_party/forked/golang v0.37.1
 --------------------------------------------------------------------------------
 Copyright (c) 2009 The Go Authors. All rights reserved.
 
@@ -2834,7 +2834,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ================================================================================
-  sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730
+  sigs.k8s.io/json v0.0.0-20260909141634-11ed52e25bc5
 --------------------------------------------------------------------------------
 Files other than internal/golang/* licensed under:
 
