@@ -22,8 +22,10 @@ import (
 
 type Matcher struct {
 	// +kubebuilder:default:=true
+	// +optional
 	IsEqual bool `json:"isEqual"`
 	// +kubebuilder:default:=true
+	// +optional
 	IsRegex bool   `json:"isRegex"`
 	Name    string `json:"name"`
 	Value   string `json:"value"`
