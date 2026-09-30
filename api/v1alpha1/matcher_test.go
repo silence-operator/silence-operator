@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 )
@@ -88,5 +89,37 @@ func TestMatchers_String(t *testing.T) {
 				t.Errorf("Matchers.String() = %#v, want %#v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestSilence_MarshalPreservesExplicitFalseMatchers(t *testing.T) {
+	obj := Silence{Spec: SilenceSpec{
+		Comment:  "test",
+		Matchers: Matchers{{Name: alertNameLabel, Value: testAlertName, IsEqual: false, IsRegex: false}},
+	}}
+	obj.Finalizers = []string{SilenceFinalizer}
+
+	data, err := json.Marshal(obj)
+	if err != nil {
+		t.Fatalf("json.Marshal() error = %v", err)
+	}
+
+	var got struct {
+		Spec struct {
+			Matchers []map[string]any `json:"matchers"`
+		} `json:"spec"`
+	}
+	if err := json.Unmarshal(data, &got); err != nil {
+		t.Fatalf("json.Unmarshal() error = %v", err)
+	}
+	if len(got.Spec.Matchers) != 1 {
+		t.Fatalf("serialized matchers = %d, want 1", len(got.Spec.Matchers))
+	}
+
+	for _, field := range []string{"isEqual", "isRegex"} {
+		value, present := got.Spec.Matchers[0][field]
+		if !present || value != false {
+			t.Errorf("serialized %s = %v (present=%t), want explicit false", field, value, present)
+		}
 	}
 }
