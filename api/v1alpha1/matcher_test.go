@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	"encoding/json"
 	"reflect"
 	"testing"
 )
@@ -88,5 +89,19 @@ func TestMatchers_String(t *testing.T) {
 				t.Errorf("Matchers.String() = %#v, want %#v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestMatcher_MarshalKeepsExplicitFalse(t *testing.T) {
+	matcher := Matcher{Name: alertNameLabel, Value: testAlertName, IsEqual: false, IsRegex: false}
+
+	data, err := json.Marshal(matcher)
+	if err != nil {
+		t.Fatalf("json.Marshal() error = %v", err)
+	}
+
+	want := `{"isEqual":false,"isRegex":false,"name":"alertname","value":"TestAlert"}`
+	if string(data) != want {
+		t.Errorf("json.Marshal() = %s, want %s", data, want)
 	}
 }
