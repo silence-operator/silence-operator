@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.2](https://github.com/silence-operator/silence-operator/compare/v2.2.1...v2.2.2) (2026-09-30)
+
+
+### Bug Fixes
+
+* **helm:** Set ServiceMonitor namespace ([#39](https://github.com/silence-operator/silence-operator/issues/39)) ([1938a82](https://github.com/silence-operator/silence-operator/commit/1938a82736b8e52e67c933ade3edf4b1f5f372eb))
+
 ## [2.2.1](https://github.com/silence-operator/silence-operator/compare/v2.2.0...v2.2.1) (2026-09-27)
 
 
