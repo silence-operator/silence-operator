@@ -2,6 +2,16 @@ apiVersion: v1
 entries:
   silence-operator:
   - apiVersion: v2
+    appVersion: 2.2.3
+    created: "2026-10-22T12:48:50.698421613Z"
+    description: A Helm chart for Kubernetes
+    digest: bfe0812ecb9b6a9b641e3de4abd093891fde91b2417c16f1b6f219f899e00b61
+    name: silence-operator
+    type: application
+    urls:
+    - https://github.com/silence-operator/silence-operator/releases/download/silence-operator-2.2.3/silence-operator-2.2.3.tgz
+    version: 2.2.3
+  - apiVersion: v2
     appVersion: 2.2.2
     created: "2026-09-30T12:25:39.132340176Z"
     description: A Helm chart for Kubernetes
@@ -131,4 +141,4 @@ entries:
     urls:
     - https://github.com/silence-operator/silence-operator/releases/download/silence-operator-v1.1.2/silence-operator-v1.1.2.tgz
     version: v1.1.2
-generated: "2026-09-30T12:25:39.132454531Z"
+generated: "2026-10-22T12:48:50.698524876Z"
