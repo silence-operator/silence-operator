@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.2.3](https://github.com/silence-operator/silence-operator/compare/v2.2.2...v2.2.3) (2026-10-01)
+
+
+### Bug Fixes
+
+* **api:** preserve explicit false matcher flags ([#41](https://github.com/silence-operator/silence-operator/issues/41)) ([c7dcdd0](https://github.com/silence-operator/silence-operator/commit/c7dcdd09dc0bcda4eafa8964941f40615597816e))
+
 ## [2.2.2](https://github.com/silence-operator/silence-operator/compare/v2.2.1...v2.2.2) (2026-09-30)
 
 
