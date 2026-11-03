@@ -1,7 +1,10 @@
 name: Bazel
 
 on:
+  # Pushes only on main (post-merge); branch pushes are covered by their PR run, so they don't run twice.
   push:
+    branches:
+      - main
   pull_request:
 
 # Coverage-comment reruns on every push to a PR; cancel the superseded run rather than race it for the comment.
