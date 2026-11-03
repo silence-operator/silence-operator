@@ -21,6 +21,7 @@ exports_files([
     "gazelle-LICENSE",
     "kustomize-LICENSE",
     "package_metadata-LICENSE",
+    "protobuf-no-rules_apple.patch",
 ])
 
 license_check(patterns = [])
