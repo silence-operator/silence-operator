@@ -1,5 +1,7 @@
 # Merge per-target coverage.dat files into one combined lcov report.
 coverage --combined_report=lcov
+coverage --jobs=32
+coverage --remote_download_minimal
 
 #local overrides
 try-import %workspace%/.bazelrc.local
