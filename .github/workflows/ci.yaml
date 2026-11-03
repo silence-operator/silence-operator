@@ -34,7 +34,6 @@ jobs:
             - MODULE.bazel.lock
             - go.mod
             - go.sum
-          disk-cache: ${{ github.job }}
 
       - name: Set up Hermetiq credentials
         if: env.HERMETIQ_CONFIG != ''
@@ -73,7 +72,6 @@ jobs:
             - MODULE.bazel.lock
             - go.mod
             - go.sum
-          disk-cache: ${{ github.job }}
 
       - name: Set up Hermetiq credentials
         if: env.HERMETIQ_CONFIG != ''
