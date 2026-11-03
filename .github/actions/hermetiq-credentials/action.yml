@@ -23,7 +23,7 @@ runs:
         # Fail here, loudly, rather than let every Bazel step fail later with the helper's generic error.
         for name in HERMETIQ_CLIENT_ID HERMETIQ_CLIENT_SECRET; do
           if [ -z "${!name}" ]; then
-            echo "::error::$name is empty; check the HERMETIC_CLIENT_ID / HERMETIC_CLIENT_SECRET repository secrets"
+            echo "::error::$name is empty; check the HERMETIQ_CLIENT_ID / HERMETIQ_CLIENT_SECRET repository secrets"
             exit 1
           fi
         done

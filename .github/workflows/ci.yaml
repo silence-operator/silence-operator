@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
-  # Forks (their own pushes, and fork PRs) have no HERMETIC_* secrets, so they skip Hermetiq (credentials step and --config) and build with --config=ci only. Same-repo runs fail loudly if a secret is missing.
+  # Forks (their own pushes, and fork PRs) have no HERMETIQ_* secrets, so they skip Hermetiq (credentials step and --config) and build with --config=ci only. Same-repo runs fail loudly if a secret is missing.
   HERMETIQ_CONFIG: ${{ github.repository == 'silence-operator/silence-operator' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '--config=hermetiq' || '' }}
 
 jobs:
@@ -37,8 +37,8 @@ jobs:
         if: env.HERMETIQ_CONFIG != ''
         uses: ./.github/actions/hermetiq-credentials
         with:
-          client-id: ${{ secrets.HERMETIC_CLIENT_ID }}
-          client-secret: ${{ secrets.HERMETIC_CLIENT_SECRET }}
+          client-id: ${{ secrets.HERMETIQ_CLIENT_ID }}
+          client-secret: ${{ secrets.HERMETIQ_CLIENT_SECRET }}
 
       # Catches drift between go.mod/go.sum, MODULE.bazel/BUILD.bazel files, and NOTICE.
       # mod tidy takes no --config=hermetiq: that config is scoped to build, which `bazel mod` doesn't inherit from.
@@ -76,8 +76,8 @@ jobs:
         if: env.HERMETIQ_CONFIG != ''
         uses: ./.github/actions/hermetiq-credentials
         with:
-          client-id: ${{ secrets.HERMETIC_CLIENT_ID }}
-          client-secret: ${{ secrets.HERMETIC_CLIENT_SECRET }}
+          client-id: ${{ secrets.HERMETIQ_CLIENT_ID }}
+          client-secret: ${{ secrets.HERMETIQ_CLIENT_SECRET }}
 
       - name: Build
         run: bazel build --config=ci $HERMETIQ_CONFIG //...
