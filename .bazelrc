@@ -1,5 +1,3 @@
-common:ci --repository_cache=~/.cache/bazel-repo
-
 # Merge per-target coverage.dat files into one combined lcov report.
 coverage --combined_report=lcov
 

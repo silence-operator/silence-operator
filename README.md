@@ -4,7 +4,7 @@ Kubernetes operator to manage AlertManager silences via kubernetes resources.
 
 ## Test coverage
 
-`bazel coverage --config=ci //...` computes coverage for the Bazel-testable unit tests. The
+`bazel coverage //...` computes coverage for the Bazel-testable unit tests. The
 Kind-backed e2e suite is tagged `manual`, which `//...` excludes by definition. The envtest-backed
 `internal/controller` suite isn't excluded, but self-skips via `Skip()` in `BeforeSuite` when it
 can't find envtest binaries (no `KUBEBUILDER_ASSETS` and no `make setup-envtest` output) — which is
@@ -17,7 +17,7 @@ with both numbers; that reporting step is non-blocking and can't fail the build.
 To render an HTML report locally:
 
 ```sh
-bazel coverage --config=ci //...
+bazel coverage //...
 genhtml --output-directory coverage-report bazel-out/_coverage/_coverage_report.dat
 open coverage-report/index.html  # xdg-open on Linux
 ```
