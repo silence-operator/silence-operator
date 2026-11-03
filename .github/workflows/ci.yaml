@@ -9,6 +9,10 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+env:
+  # Forks (their own pushes, and fork PRs) have no HERMETIC_* secrets, so they skip Hermetiq (credentials step and --config) and build with --config=ci only. Same-repo runs fail loudly if a secret is missing.
+  HERMETIQ_CONFIG: ${{ github.repository == 'silence-operator/silence-operator' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '--config=hermetiq' || '' }}
+
 jobs:
   check-generated:
     name: Check generated Bazel files are up to date
@@ -29,12 +33,20 @@ jobs:
             - go.sum
           disk-cache: ${{ github.job }}
 
+      - name: Set up Hermetiq credentials
+        if: env.HERMETIQ_CONFIG != ''
+        uses: ./.github/actions/hermetiq-credentials
+        with:
+          client-id: ${{ secrets.HERMETIC_CLIENT_ID }}
+          client-secret: ${{ secrets.HERMETIC_CLIENT_SECRET }}
+
       # Catches drift between go.mod/go.sum, MODULE.bazel/BUILD.bazel files, and NOTICE.
+      # mod tidy takes no --config=hermetiq: that config is scoped to build, which `bazel mod` doesn't inherit from.
       - name: Check generated Bazel files are up to date
         run: |
           bazel mod tidy --config=ci
-          bazel run --config=ci //:gazelle
-          bazel run --config=ci //:notice
+          bazel run --config=ci $HERMETIQ_CONFIG //:gazelle
+          bazel run --config=ci $HERMETIQ_CONFIG //:notice
           git diff --exit-code
 
   build:
@@ -60,18 +72,25 @@ jobs:
             - go.sum
           disk-cache: ${{ github.job }}
 
+      - name: Set up Hermetiq credentials
+        if: env.HERMETIQ_CONFIG != ''
+        uses: ./.github/actions/hermetiq-credentials
+        with:
+          client-id: ${{ secrets.HERMETIC_CLIENT_ID }}
+          client-secret: ${{ secrets.HERMETIC_CLIENT_SECRET }}
+
       - name: Build
-        run: bazel build --config=ci //...
+        run: bazel build --config=ci $HERMETIQ_CONFIG //...
 
       - name: Test
         if: github.event_name != 'pull_request'
-        run: bazel test --config=ci //...
+        run: bazel test --config=ci $HERMETIQ_CONFIG //...
 
       # Same pass/fail gate as bazel test (a broken/failing target fails both identically); also produces the
       # coverage report the steps below use, so a PR run executes the suite once instead of twice.
       - name: Test with coverage
         if: github.event_name == 'pull_request'
-        run: bazel coverage --config=ci //...
+        run: bazel coverage --config=ci $HERMETIQ_CONFIG //...
 
       # Everything below is informational
       - name: Extract PR coverage percentage
@@ -88,13 +107,18 @@ jobs:
         continue-on-error: true
         run: git checkout --force ${{ github.event.pull_request.base.sha }}
 
+      # The base commit is checked out here: it may predate build:hermetiq in .bazelrc (--config=hermetiq is a hard error there) or the helper's *_FILE credential support, so only opt in when it has both.
       - name: Compute coverage for the base branch
         if: github.event_name == 'pull_request' && steps.head.outputs.pct != ''
         continue-on-error: true
         id: base-compute
         run: |
           rm -f "$(bazel info output_path)/_coverage/_coverage_report.dat"
-          bazel coverage --config=ci //...
+          hermetiq=""
+          if grep -q '^build:hermetiq ' .bazelrc 2>/dev/null && grep -q CLIENT_ID_FILE tools/hermetiq-credential-helper.py 2>/dev/null; then
+            hermetiq="$HERMETIQ_CONFIG"
+          fi
+          bazel coverage --config=ci $hermetiq //...
 
       # extract-coverage is a local action needing action.yml on disk, which the base commit checked out above may predate; safe to switch back since the coverage report lives outside git, under Bazel's output tree.
       - name: Check out PR head commit

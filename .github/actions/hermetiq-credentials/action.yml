@@ -1,0 +1,40 @@
+name: Set up Hermetiq credentials
+description: >
+  Writes the Hermetiq OAuth client credentials to files under RUNNER_TEMP and exports CLIENT_ID_FILE /
+  CLIENT_SECRET_FILE for tools/hermetiq-credential-helper.py. Bazel forwards its whole environment into the
+  build event stream it uploads to Hermetiq, so the secret must never be an env var of a step that runs Bazel;
+  only the file paths are. Must run after bazel-contrib/setup-bazel (see the BAZELISK_GITHUB_TOKEN note below).
+inputs:
+  client-id:
+    description: Hermetiq OAuth client ID
+    required: true
+  client-secret:
+    description: Hermetiq OAuth client secret
+    required: true
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        HERMETIQ_CLIENT_ID: ${{ inputs.client-id }}
+        HERMETIQ_CLIENT_SECRET: ${{ inputs.client-secret }}
+      run: |
+        set -euo pipefail
+        # Fail here, loudly, rather than let every Bazel step fail later with the helper's generic error.
+        for name in HERMETIQ_CLIENT_ID HERMETIQ_CLIENT_SECRET; do
+          if [ -z "${!name}" ]; then
+            echo "::error::$name is empty; check the HERMETIC_CLIENT_ID / HERMETIC_CLIENT_SECRET repository secrets"
+            exit 1
+          fi
+        done
+        umask 077
+        dir="$RUNNER_TEMP/hermetiq"
+        mkdir -p "$dir"
+        printf '%s' "$HERMETIQ_CLIENT_ID" > "$dir/client-id"
+        printf '%s' "$HERMETIQ_CLIENT_SECRET" > "$dir/client-secret"
+        # Blank the GITHUB_TOKEN setup-bazel exported as BAZELISK_GITHUB_TOKEN so Bazel doesn't upload it; a pinned .bazelversion needs no token.
+        {
+          echo "CLIENT_ID_FILE=$dir/client-id"
+          echo "CLIENT_SECRET_FILE=$dir/client-secret"
+          echo "BAZELISK_GITHUB_TOKEN="
+        } >> "$GITHUB_ENV"

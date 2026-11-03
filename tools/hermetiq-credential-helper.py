@@ -4,15 +4,27 @@ import os
 import sys
 import urllib.request
 
-
-
-CLIENT_ID = os.getenv("CLIENT_ID")
-CLIENT_SECRET = os.getenv("CLIENT_SECRET")
 TOKEN_URL = "https://login.cloud.hermetiq.io/v1/oauth2/token"
 
+
+def read_file(path_env_var):
+    with open(os.environ[path_env_var]) as f:
+        return f.read().strip()
+
+
 try:
-    data = json.dumps({"client_id": CLIENT_ID, "client_secret": CLIENT_SECRET, "grant_type": "client_credentials"}).encode()
-    request = urllib.request.Request(TOKEN_URL, data=data, headers={"Content-Type": "application/json"})
+    CLIENT_ID = read_file("CLIENT_ID_FILE")
+    CLIENT_SECRET = read_file("CLIENT_SECRET_FILE")
+    data = json.dumps(
+        {
+            "client_id": CLIENT_ID,
+            "client_secret": CLIENT_SECRET,
+            "grant_type": "client_credentials",
+        }
+    ).encode()
+    request = urllib.request.Request(
+        TOKEN_URL, data=data, headers={"Content-Type": "application/json"}
+    )
     with urllib.request.urlopen(request, timeout=30) as response:
         token = json.load(response)["access_token"]
     if not isinstance(token, str) or not token.strip():
