@@ -80,9 +80,6 @@ jobs:
           client-id: ${{ secrets.HERMETIQ_CLIENT_ID }}
           client-secret: ${{ secrets.HERMETIQ_CLIENT_SECRET }}
 
-      - name: Build
-        run: bazel build $HERMETIQ_CONFIG //...
-
       - name: Test
         if: github.event_name != 'pull_request'
         run: bazel test $HERMETIQ_CONFIG //...
