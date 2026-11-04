@@ -1,13 +1,20 @@
 name: Bazel
 
 on:
+  # Pushes only on main (post-merge); branch pushes are covered by their PR run, so they don't run twice.
   push:
+    branches:
+      - main
   pull_request:
 
 # Coverage-comment reruns on every push to a PR; cancel the superseded run rather than race it for the comment.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  # Forks (their own pushes, and fork PRs) have no HERMETIQ_* secrets, so they skip Hermetiq (credentials step and --config) and build locally. Same-repo runs fail loudly if a secret is missing.
+  HERMETIQ_CONFIG: ${{ github.repository == 'silence-operator/silence-operator' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && '--config=hermetiq' || '' }}
 
 jobs:
   check-generated:
@@ -27,14 +34,21 @@ jobs:
             - MODULE.bazel.lock
             - go.mod
             - go.sum
-          disk-cache: ${{ github.job }}
+
+      - name: Set up Hermetiq credentials
+        if: env.HERMETIQ_CONFIG != ''
+        uses: ./.github/actions/hermetiq-credentials
+        with:
+          client-id: ${{ secrets.HERMETIQ_CLIENT_ID }}
+          client-secret: ${{ secrets.HERMETIQ_CLIENT_SECRET }}
 
       # Catches drift between go.mod/go.sum, MODULE.bazel/BUILD.bazel files, and NOTICE.
+      # mod tidy takes no --config=hermetiq: that config is scoped to build, which `bazel mod` doesn't inherit from.
       - name: Check generated Bazel files are up to date
         run: |
-          bazel mod tidy --config=ci
-          bazel run --config=ci //:gazelle
-          bazel run --config=ci //:notice
+          bazel mod tidy
+          bazel run $HERMETIQ_CONFIG //:gazelle
+          bazel run $HERMETIQ_CONFIG //:notice
           git diff --exit-code
 
   build:
@@ -58,20 +72,23 @@ jobs:
             - MODULE.bazel.lock
             - go.mod
             - go.sum
-          disk-cache: ${{ github.job }}
 
-      - name: Build
-        run: bazel build --config=ci //...
+      - name: Set up Hermetiq credentials
+        if: env.HERMETIQ_CONFIG != ''
+        uses: ./.github/actions/hermetiq-credentials
+        with:
+          client-id: ${{ secrets.HERMETIQ_CLIENT_ID }}
+          client-secret: ${{ secrets.HERMETIQ_CLIENT_SECRET }}
 
       - name: Test
         if: github.event_name != 'pull_request'
-        run: bazel test --config=ci //...
+        run: bazel test $HERMETIQ_CONFIG //...
 
       # Same pass/fail gate as bazel test (a broken/failing target fails both identically); also produces the
       # coverage report the steps below use, so a PR run executes the suite once instead of twice.
       - name: Test with coverage
         if: github.event_name == 'pull_request'
-        run: bazel coverage --config=ci //...
+        run: bazel coverage $HERMETIQ_CONFIG //...
 
       # Everything below is informational
       - name: Extract PR coverage percentage
@@ -83,18 +100,36 @@ jobs:
           output-file: head-coverage.tsv
           summary: 'true'
 
-      - name: Check out PR base commit
+      # Key hashes the extract action and .bazelrc so changes to them don't reuse stale numbers; a hit skips the base run.
+      - name: Restore base coverage from cache
         if: github.event_name == 'pull_request' && steps.head.outputs.pct != ''
         continue-on-error: true
-        run: git checkout --force ${{ github.event.pull_request.base.sha }}
+        id: base-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: base-coverage.tsv
+          key: coverage-base-${{ hashFiles('.github/actions/extract-coverage/action.yml', '.bazelrc') }}-${{ github.event.pull_request.base.sha }}
 
+      # Saved before checkout: the base commit may predate the Hermetiq config.
+      - name: Check out PR base commit
+        if: github.event_name == 'pull_request' && steps.head.outputs.pct != '' && steps.base-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        run: |
+          saved="$RUNNER_TEMP/head-bazel-config"
+          mkdir -p "$saved/tools"
+          cp -p .bazelrc "$saved/"
+          cp -p tools/hermetiq-credential-helper.py tools/set-build-metadata.sh "$saved/tools/"
+          git checkout --force ${{ github.event.pull_request.base.sha }}
+
+      # Runs with the head's Bazel config so both sides are measured the same way.
       - name: Compute coverage for the base branch
-        if: github.event_name == 'pull_request' && steps.head.outputs.pct != ''
+        if: github.event_name == 'pull_request' && steps.head.outputs.pct != '' && steps.base-cache.outputs.cache-hit != 'true'
         continue-on-error: true
         id: base-compute
         run: |
+          cp -pR "$RUNNER_TEMP/head-bazel-config/." .
           rm -f "$(bazel info output_path)/_coverage/_coverage_report.dat"
-          bazel coverage --config=ci //...
+          bazel coverage $HERMETIQ_CONFIG //...
 
       # extract-coverage is a local action needing action.yml on disk, which the base commit checked out above may predate; safe to switch back since the coverage report lives outside git, under Bazel's output tree.
       - name: Check out PR head commit
@@ -109,6 +144,15 @@ jobs:
         uses: ./.github/actions/extract-coverage
         with:
           output-file: base-coverage.tsv
+
+      # Only after a successful extract, so a failed run never poisons the key.
+      - name: Save base coverage to cache
+        if: github.event_name == 'pull_request' && steps.base.outputs.pct != ''
+        continue-on-error: true
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: base-coverage.tsv
+          key: coverage-base-${{ hashFiles('.github/actions/extract-coverage/action.yml', '.bazelrc') }}-${{ github.event.pull_request.base.sha }}
 
       # continue-on-error: fork PRs get a read-only GITHUB_TOKEN on pull_request, so the comment call 403s there instead of failing CI (not switching to pull_request_target, which would hand a write token to untrusted PR code).
       - name: Comment on PR with coverage delta
@@ -175,3 +219,50 @@ jobs:
                 body,
               });
             }
+
+  # Seeds the cache PRs restore their base coverage from; main pushes otherwise leave no coverage report.
+  seed-coverage:
+    name: Seed base coverage cache for main
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Clone the code
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Set up Bazel
+        uses: bazel-contrib/setup-bazel@c5acdfb288317d0b5c0bbd7a396a3dc868bb0f86 # 0.19.0
+        with:
+          repository-cache: |
+            - MODULE.bazel
+            - MODULE.bazel.lock
+            - go.mod
+            - go.sum
+
+      - name: Set up Hermetiq credentials
+        if: env.HERMETIQ_CONFIG != ''
+        uses: ./.github/actions/hermetiq-credentials
+        with:
+          client-id: ${{ secrets.HERMETIQ_CLIENT_ID }}
+          client-secret: ${{ secrets.HERMETIQ_CLIENT_SECRET }}
+
+      - name: Test with coverage
+        run: bazel coverage $HERMETIQ_CONFIG //...
+
+      # The tsv path must match the PR side's: the cache version is derived from it.
+      - name: Extract coverage percentage
+        continue-on-error: true
+        id: extract
+        uses: ./.github/actions/extract-coverage
+        with:
+          output-file: base-coverage.tsv
+          summary: 'true'
+
+      - name: Save coverage to cache
+        if: steps.extract.outputs.pct != ''
+        continue-on-error: true
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: base-coverage.tsv
+          key: coverage-base-${{ hashFiles('.github/actions/extract-coverage/action.yml', '.bazelrc') }}-${{ github.sha }}

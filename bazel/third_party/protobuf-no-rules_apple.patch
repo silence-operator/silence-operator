@@ -1,0 +1,12 @@
+--- a/MODULE.bazel
++++ b/MODULE.bazel
+@@ -14,7 +14,8 @@
+ # Thus the highest version in their module graph is resolved.
+ 
+ # These dependencies must be declared before the other rules dependencies.
+-bazel_dep(name = "rules_apple", version = "3.16.0", repo_name = "build_bazel_rules_apple")
++# Dropped by silence-operator: rules_apple only pulls in rules_swift, whose
++# unconditional swift toolchain registration adds analysis time to every build.
+ bazel_dep(name = "apple_support", version = "1.15.1", repo_name = "build_bazel_apple_support")
+ 
+ # Keep apple_support on 1.15.1 for now to avoid this issue:

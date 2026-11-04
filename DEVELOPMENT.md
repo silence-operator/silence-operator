@@ -30,13 +30,13 @@ For a brand-new package, add the `load("//bazel:addlicense.bzl", "license_check"
 `package(default_package_metadata = ["//:package_metadata"])` line, and a `license_check()` call
 by hand (copy an existing `BUILD.bazel`), then run `addlicense_fix` to stamp the header comment.
 
-`bazel coverage --config=ci //...` (see [README.md](README.md#test-coverage)) runs the
+`bazel coverage //...` (see [README.md](README.md#test-coverage)) runs the
 `addlicense` test as part of the normal build, so a missing/incorrect header fails CI.
 
 ## Coverage
 
 ```sh
-bazel coverage --config=ci //...
+bazel coverage //...
 genhtml -o coverage-report/report bazel-out/_coverage/_coverage_report.dat
 open coverage-report/report/index.html  # xdg-open on Linux
 ```
@@ -59,7 +59,7 @@ bazel run //:lint
 `internal/controller`'s Ginkgo suite (`suite_test.go`) needs real envtest binaries
 (`kube-apiserver`, `etcd`) to run. It self-skips via `Skip()` in `BeforeSuite` when it can't find
 them (`KUBEBUILDER_ASSETS` unset and no `make setup-envtest` output under `bin/k8s`), so
-`bazel test //...`/`bazel coverage --config=ci //...` pass without exercising it. To run it for
+`bazel test //...`/`bazel coverage //...` pass without exercising it. To run it for
 real:
 
 ```sh
