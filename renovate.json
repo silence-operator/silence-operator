@@ -1,0 +1,78 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "enabledManagers": [
+    "bazel-module",
+    "bazelisk",
+    "dockerfile",
+    "github-actions",
+    "gomod"
+  ],
+  "extends": [
+    "config:recommended",
+    ":disableDependencyDashboard",
+    ":semanticCommits",
+    "helpers:pinGitHubActionDigests"
+  ],
+  "minimumReleaseAge": "7 days",
+  "osvVulnerabilityAlerts": true,
+  "packageRules": [
+    {
+      "matchDatasources": [
+        "docker"
+      ],
+      "minimumReleaseAgeBehaviour": "timestamp-optional"
+    },
+    {
+      "description": "Go deps ship in the binary: fix(deps) makes release-please cut a patch release",
+      "matchManagers": [
+        "gomod"
+      ],
+      "semanticCommitType": "fix"
+    },
+    {
+      "description": "Renovate skips indirect Go deps by default, but most CVEs land there (e.g. golang.org/x/net)",
+      "enabled": true,
+      "groupName": "indirect Go dependencies",
+      "matchDepTypes": [
+        "indirect"
+      ],
+      "matchManagers": [
+        "gomod"
+      ]
+    },
+    {
+      "description": "The go directive sets the minimum Go for every consumer of the module; bump it deliberately",
+      "enabled": false,
+      "matchDepNames": [
+        "go"
+      ],
+      "matchManagers": [
+        "gomod"
+      ]
+    },
+    {
+      "groupName": "CI dependencies",
+      "matchManagers": [
+        "bazelisk",
+        "github-actions"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch",
+        "digest",
+        "pin",
+        "pinDigest"
+      ]
+    }
+  ],
+  "postUpdateOptions": [
+    "gomodTidy"
+  ],
+  "prHourlyLimit": 0,
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "statusCheckWhen": {
+    "minimumReleaseAge": "never"
+  }
+}
